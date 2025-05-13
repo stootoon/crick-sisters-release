@@ -202,7 +202,7 @@ class InferenceDynamics:
         return res0, res1, odour, noise, ob0, ob1
         
         
-    def prep(self, args):
+    def prep(self, args, force = False):
         np.random.seed(5)
         M, N = 50, 200
         n = 5
@@ -215,31 +215,43 @@ class InferenceDynamics:
         results = []
         err_fun = lambda x: np.linalg.norm(x, 2)
 
-        keep = []
-        for j, sd_inf in enumerate(sd_inf_vals):
-            for i in range(n_trials):
-                res0, res1, odour, noise, ob0, ob1 = self.single_run(A_mean, C, S_min_max = [4,9], sd_inf = sd_inf, sd_n = 0.5, be = 0.1, ga = 0.1, seed = i)
-                x0 = res0["x"]
-                x1 = res1["x"]
-                x_true = np.arange(N) < n
-                err0 = err_fun(x0 - x_true)
-                err1 = err_fun(x1 - x_true)
-                results.append({"sd_inf": sd_inf, "trial": i, "x0err": err0, "x1err": err1})
-                print(f"sd_inf = {sd_inf}, trial = {i}, |x0 - x_true| = {err0:.3f}, |x1 - x_true| = {err1:.3f}")
-                if sd_inf == 20 and i == 0:
-                    keep = [res0, res1, odour, noise, ob0, ob1]
+        if not os.path.exists("inf_dyn.p") or force:
+            keep = []
+            for j, sd_inf in enumerate(sd_inf_vals):
+                for i in range(n_trials):
+                    res0, res1, odour, noise, ob0, ob1 = self.single_run(A_mean, C, S_min_max = [4,9], sd_inf = sd_inf, sd_n = 0.5, be = 0.1, ga = 0.1, seed = i)
+                    x0 = res0["x"]
+                    x1 = res1["x"]
+                    x_true = np.arange(N) < n
+                    err0 = err_fun(x0 - x_true)
+                    err1 = err_fun(x1 - x_true)
+                    inf_dyn.append({"sd_inf": sd_inf, "trial": i, "x0err": err0, "x1err": err1})
+                    print(f"sd_inf = {sd_inf}, trial = {i}, |x0 - x_true| = {err0:.3f}, |x1 - x_true| = {err1:.3f}")
+                    if sd_inf == 20 and i == 0:
+                        keep = [res0, res1]
+    
+            df = pd.DataFrame(results)
+    
+            out1 = ob1.run_sister(odour.value_at(0.5) +noise, t_end = 3, dt=2e-4, keep_every=10)
 
-        df = pd.DataFrame(results)
+            with open("inf_dyn.p", "wb") as f:
+                pickle.dump((keep, df, out1), f)
 
-        out1 = ob1.run_sister(odour.value_at(0.5) +noise, t_end = 3, dt=2e-4, keep_every=10)
-                    
-        res0, res1, odour, noise, ob0, ob1 = keep
+            print(f"Results saved to inf_dyn.p.")
 
+        else:
+            print(f"Loading results from inf_dyn.p")
+            with open("inf_dyn.p", "rb") as f:
+                keep, df, out1 = pickle.load(f)                            
+                        
+        res0, res1 = keep
+    
         self.N = N
         self.n = n
         self.keep = keep
         self.df = df
         self.out1 = out1
+
 
     def plot(self):
         N = self.N
@@ -260,7 +272,7 @@ class InferenceDynamics:
         h1 = self.mystem(np.arange(10) + 0.2, x1[:10], "o-", label = "x1", color = "C1", markersize=2, lw=2)
         h2 = self.mystem(np.arange(10) + 0.4, x0[:10], "o-", label = "x0", color = "C0", markersize=2, lw=2)
         plt.plot(plt.xlim(),[0,0], "k--", lw=0.5)
-        plt.legend([h0[0], h1[0], h2[0]], ["True", "Coact.", "Indep."], loc = "upper right", fontsize=10, frameon=False, labelspacing=0.2)
+        plt.legend([h0[0], h1[0], h2[0]], ["True", "Corr.", "Indep."], loc = "upper right", fontsize=10, frameon=False, labelspacing=0.2)
         plt.xlabel("Feature Index", fontsize=14)
         plt.ylabel("Value", fontsize=14)
         
@@ -269,7 +281,7 @@ class InferenceDynamics:
         # Make it a line plot, connecting x0err, and a line plot connecting x1err, and use log scale on the y-axis
         # Add error bars to show the standard deviation of the errors over the trials
         df.groupby("sd_inf").mean().plot(y = ["x0err", "x1err"], logx = True, logy = True, yerr = df.groupby("sd_inf").std(), marker = "o", ax = ax_err)
-        plt.gca().legend(["Indep.", "Coact."],  fontsize=10, frameon=False, labelspacing=0.2)
+        plt.gca().legend(["Indep.", "Corr."],  fontsize=10, frameon=False, labelspacing=0.2)
         plt.xlabel("sd$_{inf}$", fontsize=14)
         plt.ylabel("Error", fontsize=14, labelpad=-10)
         # Get the y-axis ticks and convert them to decimal notation
