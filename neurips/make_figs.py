@@ -193,7 +193,7 @@ class ConnectivityDynamics(BaseFigure):
         return C
 
     @staticmethod
-    def spines_off(ax = gca(), which=["top", "right"]):
+    def spines_off(ax = plt.gca(), which=["top", "right"]):
         for w in which:
             ax.spines[w].set_visible(False)
         return ax
@@ -216,11 +216,11 @@ class ConnectivityDynamics(BaseFigure):
             fracs = [np.mean(ci >= th)*100 for th in thresh]
             for fi, f in enumerate(fracs):
                 ax.plot([i, i],[0,f], color=cols[fi], lw=5)
-        xlabel("input channel (sorted)")
-        ylabel("stimulus %")
+        plt.xlabel("input channel (sorted)")
+        plt.ylabel("stimulus %")
 
     @staticmethod
-    def plot_W1(d, vlim = 1/4, cmap="bwr", ls = "k", ax = None):
+    def plot_W1(d, Svals, N, vlim = 1/4, cmap="bwr", ls = "k", ax = None):
         ax = gca() if ax is None else ax
         ax.matshow(d["W1"].T, vmin=-1/4,vmax=1/4, cmap="bwr")
         yl = plt.ylim()
@@ -232,7 +232,7 @@ class ConnectivityDynamics(BaseFigure):
     def prep(self, force = False):
         print("Preparing figure...")
         print("\tGenerating sparse covariance matrix...")
-        C1 = gen_sparse_cov(50, 50, rho=0.2, sp = 0.01)
+        C1 = self.gen_sparse_cov(50, 50, rho=0.2, sp = 0.01)
         
         tau_gc = 0.1
         tau_mc = 0.05
@@ -241,21 +241,21 @@ class ConnectivityDynamics(BaseFigure):
         be = 0.1 
         ga = 0.1
 
-        random.seed(0)
+        np.random.seed(0)
         M, N = 20, 50
         Smin, Smax = 10, 20
-        Svals = [random.randint(Smin, Smax) for i in range(M)]; print(Svals, sum(Svals))
-        A_mean = rand(M, N)*3
+        Svals = [np.random.randint(Smin, Smax) for i in range(M)]; print(Svals, sum(Svals))
+        A_mean = np.random.rand(M, N)*3
         data_file = f"conn.p"        
         if not os.path.exists(data_file) or force:
             print(f"Generating random, sparse and weighted connectivity matrices...")
-            random.seed(1); A1_0, details1_0 = ob.OlfactoryBulb.generate_connectivity(M, N, Svals, A_mean, sd_inf**2 * C1 * 1e-1, random_rotation=True, return_details=True, sparsify=0, penalty=0, verbosity = 0)
-            random.seed(1); A1_1, details1_1 = ob.OlfactoryBulb.generate_connectivity(M, N, Svals, A_mean, sd_inf**2 * C1 * 1e-1, random_rotation=True, return_details=True, sparsify=5, penalty=10+0*arange(M), verbosity = 0)
-            random.seed(1); A1_w, details1_w = ob.OlfactoryBulb.generate_connectivity(M, N, Svals, A_mean, sd_inf**2 * C1 * 1e-1, random_rotation=True, return_details=True, sparsify=5, penalty=arange(M), verbosity = 0)
+            np.random.seed(1); A1_0, details1_0 = ob.OlfactoryBulb.generate_connectivity(M, N, Svals, A_mean, sd_inf**2 * C1 * 1e-1, random_rotation=True, return_details=True, sparsify=0, penalty=0, verbosity = 0)
+            np.random.seed(1); A1_1, details1_1 = ob.OlfactoryBulb.generate_connectivity(M, N, Svals, A_mean, sd_inf**2 * C1 * 1e-1, random_rotation=True, return_details=True, sparsify=5, penalty=10+0*np.arange(M), verbosity = 0)
+            np.random.seed(1); A1_w, details1_w = ob.OlfactoryBulb.generate_connectivity(M, N, Svals, A_mean, sd_inf**2 * C1 * 1e-1, random_rotation=True, return_details=True, sparsify=5, penalty=np.arange(M), verbosity = 0)
             ob_arr = [ob.OlfactoryBulb(A, sd_inf, be, ga, tau_gc=tau_gc, tau_mc = tau_mc, verbosity=0, enforce_ga=True) for A in [A1_0, A1_1, A1_w]]
             
             data = {"A1_0": A1_0, "A1_1": A1_1, "A1_w": A1_w, "details1_0": details1_0, "details1_1": details1_1, "details1_w": details1_w, 
-            "Svals": Svals, "σ_inf": σ_inf, "β": β, "γ": γ, "tau_gc": tau_gc, "tau_mc": tau_mc, "ob_arr": ob_arr}
+            "Svals": Svals, "sd_inf": sd_inf, "be": be, "ga": ga, "tau_gc": tau_gc, "tau_mc": tau_mc, "ob_arr": ob_arr}
     
             with open(data_file, "wb") as f:
                 pickle.dump(data, f)
@@ -280,27 +280,60 @@ class ConnectivityDynamics(BaseFigure):
                 with open(data_file, "rb") as f:
                     resp[(which_bulb, which_odour)] = pickle.load(f)
 
+        print("Calculating correlations...")
+        corrs = []
+        for (bi, oi) in resp.keys():
+            for si in range(20):
+                ind_cmp = np.where((resp[bi,oi]["T"] > 0.5) * (resp[bi,oi]["T"] < 2))[0]
+                R = resp[bi, oi]["La"][si][ind_cmp, :]
+                rho = np.corrcoef(R.T)
+                # Take the upper triangle of the correlation matrix
+                rho = rho[np.triu_indices(rho.shape[0], k=1)]
+                corrs.append(np.mean(rho))
+        corrs = np.array(corrs).reshape((3, 50, 20))                    
+        
         from run_odours import run_odours        
-
         which_odours = [[0,1,2], [0,1,2], [0,1,2]]
 
-        print("Running bulbs for a few odours...")
-        self.out1_0, self.out1_1, self.out1_w = [run_odours(which_ob, od_inds) for which_ob, od_inds in zip(ob_arr, which_odours)]
+        data_file = "out1_.p"
+        if not os.path.exists(data_file) or force:
+            print("Running bulbs for a few odours...")        
+            out1_0, out1_1, out1_w = [run_odours(which_ob, od_inds) for which_ob, od_inds in zip(ob_arr, which_odours)]
+            with open(data_file, "wb") as f:
+                pickle.dump((out1_0, out1_1, out1_w), f)
+        else:
+            print(f"Loading data from {data_file}...")
+            with open(data_file, "rb") as f:
+                out1_0, out1_1, out1_w = pickle.load(f)
+
+        self.out1_0 = out1_0
+        self.out1_1 = out1_1
+        self.out1_w = out1_w
+
+        self.ob_arr = ob_arr
+        self.which_odours = which_odours
+        self.corrs = corrs
+
+        self.Svals = Svals
+        self.N = N
+        
         self.details1_0 = details1_0
         self.details1_1 = details1_1
         self.details1_w = details1_w
+        
         print("Done prepping for figure.")
 
     def plot(self):
         out1_0 = self.out1_0
         out1_1 = self.out1_1
         out1_w = self.out1_w
-
+    
         ob_arr = self.ob_arr
+        which_odours = self.which_odours
+        corrs = self.corrs
 
         details1_0 = self.details1_0
         details1_1 = self.details1_1
-        details1_r = self.details1_r
         details1_w = self.details1_w
                 
         n_rows_per_conn = 1
@@ -336,10 +369,10 @@ class ConnectivityDynamics(BaseFigure):
         row_offset = 1 * n_rows_per_resp
         names = ["Random", "Sparse", "Weighted"]
         
-        for i, (name, out, (glom, sis_inds), od_inds) in enumerate(zip(names, [out1_0, out1_1, out1_r],[(0,[0,1]), (0,[0,1]), (0,[0,1])], which_odours)):
+        for i, (name, out, (glom, sis_inds), od_inds) in enumerate(zip(names, [out1_0, out1_1, out1_w],[(0,[0,1]), (0,[0,1]), (0,[0,1])], which_odours)):
             # sis_inds are in (glom, sis1, sis2) format
             # od_inds are in ind1,ind2 format
-            rows = list(row_offset + arange(n_rows_per_resp))
+            rows = list(row_offset + np.arange(n_rows_per_resp))
             ax["resp"][f"sim{i}"] = []
             for j, (od_resp, od_ind) in enumerate(zip(out, od_inds)):
                 new_ax = plt.subplot(gs[slice(rows[0], rows[1]+1), j])
@@ -352,14 +385,14 @@ class ConnectivityDynamics(BaseFigure):
                 i==0 and new_ax.set_title(f"Odour {od_ind}")
                 #i != 2 and new_ax.set_xticklabels([])
                 new_ax.set_xlim(-0.5,1.5)
-                yl = gca().get_ylim()
+                yl = plt.gca().get_ylim()
                 yl_m = np.mean(yl)
                 new_ax.set_ylim(yl_m-2.5,yl_m + 2.5)
                 new_ax.add_patch(patches.Rectangle((0,yl_m-2.5), 1, 5, linewidth=0, facecolor=(0,0,0,0.1)))
                 (i == len(out)-1) and new_ax.set_xlabel("Time (sec)")
                 (j == 0) and new_ax.set_ylabel(name, fontsize=14, labelpad=-5)
                 new_ax.set_xticks([0, 0.5, 1])
-                spines_off(new_ax)
+                self.spines_off(new_ax)
                 if j == 0:
                     lab_ax.append(new_ax)
             
@@ -393,10 +426,10 @@ class ConnectivityDynamics(BaseFigure):
         
         ax["conn"] = []
         for i, (name, details) in enumerate(zip(["Random", "Sparse", "Weighted"], [details1_0, details1_1, details1_w])):
-            rows = list(row_offset + arange(n_rows_per_conn))
-            new_ax = plot.subplot(gs[slice(rows[0], rows[-1]+1), :-1])
+            rows = list(row_offset + np.arange(n_rows_per_conn))
+            new_ax = plt.subplot(gs[slice(rows[0], rows[-1]+1), :-1])
             ax["conn"].append(new_ax)
-            self.plot_W1(details, ax=new_ax, ls = "k:")
+            self.plot_W1(details, self.Svals, self.N, ax=new_ax, ls = "k:")
             new_ax.axis("auto")
             new_ax.set_xlim(0, sum(ob_arr[0].S))
             new_ax.set_ylim(0, ob_arr[0].N-1)
@@ -408,7 +441,7 @@ class ConnectivityDynamics(BaseFigure):
             new_ax.set_title(name, fontsize=14, loc="left")
             lab_ax.append(new_ax)
         
-        tight_layout(h_pad=-0.25, w_pad = 0.5)    
+        plt.tight_layout(h_pad=-0.25, w_pad = 0.5)    
         align_x = [[0,3,6,9,12,13,14], [1, 4,7,10], [2, 5,8,11]]
         align_y = [[0,1,2], [3,4,5], [6,7,8],[9,10,11]]
         label_axes.label_axes(lab_ax, "ABCDEFGHIJKLMNOP", fontsize=12,fontweight="bold", align_x = align_x, align_y = align_y, dx=-0.001, dy=+0.001)
@@ -698,23 +731,13 @@ if __name__ == "__main__":
     assert os.access(args.output_dir, os.W_OK), f"Output directory is not writable: {args.output_dir}"
 
     print(f"Making figures {which_figs} in {args.output_dir}...")
+
+    figure_order = [ConnectivitySchematic, InferenceDynamics, ConnectivityDynamics, InferringThePrior]
     
     for fig_num in which_figs:
         print(f"Making Figure {fig_num}...")
-        if fig_num == 1:            
-            cs = ConnectivitySchematic(args)
-            cs.plot()
-        elif fig_num == 2:
-            obj = InferenceDynamics(args)
-            obj.plot()
-        elif fig_num == 3:
-            pass
-        elif fig_num == 4:
-            obj = InferringThePrior(args)
-            obj.plot()
-            pass
-        else:
-            raise ValueError(f"Invalid figure number: {fig_num}")
+        obj = figure_order[fig_num - 1](args)
+        obj.plot()
 
     print("ALLDONE")
         
