@@ -2,6 +2,7 @@ import os, sys
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import cm
+import pandas as pd
 
 git_path = os.environ["GIT"]
 sys.path.append(git_path)
@@ -162,7 +163,127 @@ class ConnectivitySchematic:
         output_file = os.path.join(args.output_dir, "connectivity.pdf")
         plt.savefig(output_file, bbox_inches="tight")
         print(f"Figure saved to {output_file}.")
+
+class InferenceDynamics:
+    def __init__(self, args):
+        self.args = args
+        self.prep(args)
+
+    @staticmethod
+    def mystem(x, y, *args, **kwargs):
+        return np.plot([x, x], [0*np.array(y), y], *args, **kwargs)
+
+    @staticmethod
+    def gen_cov(N, n, rho):
+        C = np.zeros((N,N))
+        C[:n, :n] = rho
+        for i in range(n):
+            C[i, i] = 1
+        #print(np.linalg.eigvalsh(C[:n, :n]))
+        return C
+
+    @staticmethod
+    def single_run(A_mean, C, n = 5, S_min_max = [4,9], sd_inf = 20, sd_n = 0.1, be = 0.1, ga = 0.1, seed = 2):
+        random.seed(seed)
+        M, N = A_mean.shape
+        Smin, Smax = S_min_max
+        Svals = [np.random.randint(Smin, Smax) for i in range(M)]; 
+        odour = od.Odour(np.arange(N)<n, A_mean)
+        #y   = sum(A_mean[:, :5],axis=1) + randn(M,) * 0
+        y  = odour.value_at(0)
+        A0 = ob.OlfactoryBulb.generate_connectivity(M, N, Svals, A_mean, 0* C)
+        A1 = ob.OlfactoryBulb.generate_connectivity(M, N, Svals, A_mean, sd_inf**2 * C * 1e-1)
+        tau_gc = 0.1
+        tau_mc = 0.05
+        ob0 = ob.OlfactoryBulb(A0, sd_inf, be, ga, tau_gc=tau_gc, tau_mc = tau_mc, verbosity=0, enforce_ga=True)
+        ob1 = ob.OlfactoryBulb(A1, sd_inf, be, ga, tau_gc=tau_gc, tau_mc = tau_mc, verbosity=0, enforce_ga=True)
+        noise = sd_n * randn(*y.shape)
+        res0 = ob0.run_exact(y + noise); res1 = ob1.run_exact(y+noise)
+        return res0, res1, odour, noise, ob0, ob1
         
+        
+    def prep(self, args, force = False):
+        np.random.seed(5)
+        M, N = 50, 200
+        n = 5
+        C = self.gen_cov2(N, n, -0.24)
+        ob.logger.setLevel(logging.ERROR)
+        od.logger.setLevel(logging.ERROR)
+        A_mean = np.random.randn(M, N)
+        sd_inf_vals = [10,20,50] #[1, 2, 5, 10, 20, 50, 100]
+        n_trials   = 2#5
+        results = []
+        err_fun = lambda x: np.linalg.norm(x, 2)
+        if not os.path.exists("results.p") or force:
+            keep = []
+            for j, sd_inf in enumerate(sd_inf_vals):
+                for i in range(n_trials):
+                    res0, res1, odour, noise, ob0, ob1 = self.single_run(A_mean, C, S_min_max = [4,9], sd_inf = sd_inf, sd_n = 0.5, be = 0.1, ga = 0.1, seed = i)
+                    x0 = res0["x"]
+                    x1 = res1["x"]
+                    x_true = arange(N) < n
+                    err0 = err_fun(x0 - x_true)
+                    err1 = err_fun(x1 - x_true)
+                    results.append({"sd_inf": sd_inf, "trial": i, "x0err": err0, "x1err": err1})
+                    print(f"sd_inf = {sd_inf}, trial = {i}, |x0 - x_true| = {err0:.3f}, |x1 - x_true| = {err1:.3f}")
+                    if sd_inf == 20 and i == 0:
+                        keep = [res0, res1, odour, noise, ob0, ob1]
+    
+            df = pd.DataFrame(results)
+
+            out1 = ob1.run_sister(odour.value_at(0.5) +noise, t_end = 3, dt=2e-4, keep_every=10)
+
+            with open("results.p", "wb") as f:
+                pickle.dump((df, keep, out1), f)
+            print("Results saved to results.p.")
+        else:
+            with open("results.p", "rb") as f:
+                df, keep, out1 = pickle.load(f)
+
+            print("Results loaded from results.p.")
+                    
+        res0, res1, odour, noise, ob0, ob1 = keep        
+
+    def plot(self):
+        plt.figure(figsize=(8, 3))
+        gs = GridSpec(1, 6)
+        ax_inf = plt.subplot(gs[0,:2])
+        x_true = np.arange(N) < n
+        x0 = keep[0]["x"]
+        x1 = keep[1]["x"]
+        # Make a plot where we show the first 10 elements of the true x, the first 10 elements of x0, and the first 10 elements of x1
+        # We do these as stem plots, and staggered to avoid overlap
+        h0 = self.mystem(np.arange(10), x_true[:10],   "o-", label = "x_true", color = "gray", markersize=2, lw=2)
+        h1 = self.mystem(np.arange(10) + 0.2, x1[:10], "o-", label = "x1", color = "C1", markersize=2, lw=2)
+        h2 = self.mystem(np.arange(10) + 0.4, x0[:10], "o-", label = "x0", color = "C0", markersize=2, lw=2)
+        plt.plot(plt.xlim(),[0,0], "k--", lw=0.5)
+        plt.legend([h0[0], h1[0], h2[0]], ["True", "Coact.", "Indep."], loc = "upper right", fontsize=10, frameon=False, labelspacing=0.2)
+        plt.xlabel("Feature Index", fontsize=14)
+        plt.ylabel("Value", fontsize=14)
+        
+        ax_err = plt.subplot(gs[0,2:4])
+        # Make a plot whose x-axis is σ_inf, and whose y-axis is the mean of the errors over the trials
+        # Make it a line plot, connecting x0err, and a line plot connecting x1err, and use log scale on the y-axis
+        # Add error bars to show the standard deviation of the errors over the trials
+        df.groupby("sd_inf").mean().plot(y = ["x0err", "x1err"], logx = True, logy = True, yerr = df.groupby("σ_inf").std(), marker = "o", ax = ax_err)
+        plt.gca().legend(["Indep.", "Coact."],  fontsize=10, frameon=False, labelspacing=0.2)
+        plt.xlabel("$\sigma_{inf}$", fontsize=14)
+        plt.ylabel("Error", fontsize=14, labelpad=-10)
+        # Get the y-axis ticks and convert them to decimal notation
+        plt.tight_layout()
+        
+        ax_tc = plt.subplot(gs[0,-2:])
+        plt.plot(out1["T"], out1["X"][:,:10])
+        plt.xlim(out1["T"][0], out1["T"][-1])
+        x_exact = keep[1]["x"][:10]
+        # Put red triangles < at the right most edge of the plot at the target values
+        plt.plot(out1["T"][-1]*np.ones(10), x_exact, "r<", markersize=12)
+        plt.xlabel("Time (s)", fontsize=14)
+        plt.ylabel("Value", fontsize=14)
+        plt.ylim([-0.025,1]); grid(True)
+        label_axes.label_axes([ax_inf, ax_err, ax_tc], "ABC", fontsize=12,fontweight="bold")
+        plt.savefig(os.path.join(fig_path , "inference.pdf"), bbox_inches="tight")        
+
 
 
 from argparse import ArgumentParser
@@ -186,10 +307,15 @@ if __name__ == "__main__":
     assert os.access(args.output_dir, os.W_OK), f"Output directory is not writable: {args.output_dir}"
 
     for fig_num in which_figs:
-        if fig_num == 1:
-            print("Making Figure 1...")
+        print(f"Making Figure {fig_num}...")
+        if fig_num == 1:            
             cs = ConnectivitySchematic(args)
             cs.plot()
+        elif fig_num == 2:
+            obj = InferenceDynamics(args)
+            obj.plot()
+            
+            
             
             
     
