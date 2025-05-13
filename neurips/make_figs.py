@@ -1,4 +1,5 @@
 import os, sys, logging, pickle
+from argparse import ArgumentParser
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import cm
@@ -8,8 +9,18 @@ import pandas as pd
 
 git_path = os.environ["GIT"]
 sys.path.append(git_path)
-from label_axes import label_axes
 
+try:
+    from label_axes import label_axes
+except ImportError:
+    # Define a dummy function if label_axes is not available
+    print("label_axes module not found. Using dummy function.")
+    class label_axes:
+        @staticmethod
+        def label_axes(*args, **kwargs):
+            pass
+
+        
 project_path = os.path.join(git_path, "crick-sisters-release")
 sys.path.append(project_path)
 
@@ -597,7 +608,6 @@ class InferenceDynamics(BaseFigure):
         print(f"Figure saved to {output_file}.")
         print("DONE PLOTTING INFERENCE DYNAMICS FIGURE.")
 
-
 class InferringThePrior(BaseFigure):
     def __init__(self, args):
         self.args = args
@@ -721,8 +731,8 @@ class InferringThePrior(BaseFigure):
         print(f"Figure saved to {output_file}.")
         print("DONE PLOTTING PRIOR INFERENCE FIGURE.")
         
-    
-from argparse import ArgumentParser
+
+figure_order = [ConnectivitySchematic, InferenceDynamics, ConnectivityDynamics, InferringThePrior]        
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Make figures for the paper.")
@@ -744,7 +754,7 @@ if __name__ == "__main__":
 
     print(f"Making figures {which_figs} in {args.output_dir}...")
 
-    figure_order = [ConnectivitySchematic, InferenceDynamics, ConnectivityDynamics, InferringThePrior]
+
     
     for fig_num in which_figs:
         print(f"Making Figure {fig_num}...")
