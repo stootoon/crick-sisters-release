@@ -42,10 +42,10 @@ class BaseFigure:
 class ConnectivitySchematic(BaseFigure):
     def __init__(self, args):
         self.args = args
-        self.prep(args)
+        self.prep()
 
     def prep(self):
-        print("Preparing connectivity schematic")
+        print("PREPARING CONNECTIVITY SCHEMATIC")
         np.random.seed(5)
         M, N = 50, 200
         n = 5
@@ -74,8 +74,10 @@ class ConnectivitySchematic(BaseFigure):
         self.sis_cols = sis_cols
         self.glom_cols = glom_cols
 
+        print("DONE PREPPING CONNECTIVITY SCHEMATIC.")
+
     def plot(self):
-        print("Plotting connectivity schematic")
+        print("PLOTTING CONNECTIVITY SCHEMATIC")
         n_rows, n_cols = 20, 13
         gs = GridSpec(n_rows, n_cols)
         plt.figure(figsize=(24, 10))
@@ -175,6 +177,7 @@ class ConnectivitySchematic(BaseFigure):
         output_file = os.path.join(self.args.output_dir, "schematic.pdf")
         plt.savefig(output_file, bbox_inches="tight")
         print(f"Figure saved to {output_file}.")
+        print(f"DONE PLOTTING CONNECTIVITY SCHEMATIC.")
 
 class ConnectivityDynamics(BaseFigure):
     def __init__(self, args):
@@ -230,7 +233,7 @@ class ConnectivityDynamics(BaseFigure):
         plt.xlim(xl); plt.ylim(yl)
                 
     def prep(self, force = False):
-        print("Preparing figure...")
+        print("PREPPING CONNECTIVITY DYNAMICS FIGURE...")
         print("\tGenerating sparse covariance matrix...")
         C1 = self.gen_sparse_cov(50, 50, rho=0.2, sp = 0.01)
         
@@ -321,9 +324,10 @@ class ConnectivityDynamics(BaseFigure):
         self.details1_1 = details1_1
         self.details1_w = details1_w
         
-        print("Done prepping for figure.")
+        print("DONE PREPPING CONNECTIVITY DYNAMICS FIGURE.")
 
     def plot(self):
+        print("PLOTTING CONNECTIVITY DYNAMICS FIGURE...")
         out1_0 = self.out1_0
         out1_1 = self.out1_1
         out1_w = self.out1_w
@@ -449,7 +453,7 @@ class ConnectivityDynamics(BaseFigure):
         output_file = os.path.join(self.args.output_dir, "conn_dynamics.pdf")
         plt.savefig(output_file, bbox_inches="tight")
         print(f"Figure saved to {output_file}.")
-        
+        print("DONE PLOTTING CONNECTIVITY DYNAMICS FIGURE.")
                                     
 class InferenceDynamics(BaseFigure):
     def __init__(self, args):
@@ -490,6 +494,7 @@ class InferenceDynamics(BaseFigure):
         
         
     def prep(self, force = False):
+        print("PREPPING INFERENCE DYNAMICS FIGURE.")
         np.random.seed(5)
         M, N = 50, 200
         n = 5
@@ -539,7 +544,10 @@ class InferenceDynamics(BaseFigure):
         self.df = df
         self.out1 = out1
 
+        print("DONE PREPPING INFERENCE DYNAMICS FIGURE.")
+
     def plot(self):
+        print("PLOTTING INFERENCE DYNAMICS FIGURE...")
         N = self.N
         n = self.n
         keep = self.keep
@@ -587,6 +595,7 @@ class InferenceDynamics(BaseFigure):
         output_file = os.path.join(self.args.output_dir, "inf_dynamics.pdf")
         plt.savefig(output_file, bbox_inches="tight")
         print(f"Figure saved to {output_file}.")
+        print("DONE PLOTTING INFERENCE DYNAMICS FIGURE.")
 
 
 class InferringThePrior(BaseFigure):
@@ -595,6 +604,7 @@ class InferringThePrior(BaseFigure):
         self.prep()
 
     def prep(self):
+        print("PREPPING PRIOR INFERENCE FIGURE...")
         from sisters_experiments import Experiment
         from essential_oils import EssentialOils
 
@@ -643,9 +653,10 @@ class InferringThePrior(BaseFigure):
         self.vp = vp
         self.overlap = overlap
         self.pairs_ods = pairs_ods
-    
+        print("DONE PREPPING PRIOR INFERENCE FIGURE.")
 
     def plot(self):
+        print("PLOTTING PRIOR INFERENCE FIGURE...")
         sisters = self.sisters
         vp = self.vp
         r  = self.r
@@ -708,6 +719,7 @@ class InferringThePrior(BaseFigure):
         output_file = os.path.join(self.args.output_dir, "inferred_priors.pdf")
         plt.savefig(output_file, bbox_inches="tight")
         print(f"Figure saved to {output_file}.")
+        print("DONE PLOTTING PRIOR INFERENCE FIGURE.")
         
     
 from argparse import ArgumentParser
