@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 16.0.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 width="139.257px" height="155.784px" viewBox="0 0 139.257 155.784" enable-background="new 0 0 139.257 155.784"
+	 xml:space="preserve">
+<g>
+	<text transform="matrix(0.9748 0 0 1 104.2119 13.834)" fill="#009FE3" font-family="'Arial-BoldMT'" font-size="12">a</text>
+	<text transform="matrix(0.5683 0 0 0.583 110.7168 17.8301)" fill="#009FE3" font-family="'ArialMT'" font-size="12">1</text>
+	<text transform="matrix(0.9748 0 0 1 128.959 65.02)" fill="#F39200" font-family="'Arial-BoldMT'" font-size="12">a</text>
+	<text transform="matrix(0.5683 0 0 0.583 135.4639 69.0161)" fill="#F39200" font-family="'ArialMT'" font-size="12">2</text>
+	<text transform="matrix(0.9748 0 0 1 124.6836 147.2705)" fill="#2FAC66" font-family="'Arial-BoldMT'" font-size="12">a</text>
+	<text transform="matrix(0.5683 0 0 0.583 131.1885 151.2666)" fill="#2FAC66" font-family="'ArialMT'" font-size="12">3</text>
+	<g>
+		<path fill="none" stroke="#B2B2B2" stroke-miterlimit="10" d="M19.757,106.726c5.808-7.759,4.146-18.797-3.712-24.68"/>
+		<path fill="none" stroke="#B2B2B2" stroke-miterlimit="10" d="M69.975,85.521c6.19-14.664-0.821-31.601-15.672-37.87"/>
+		<g>
+			<g>
+				
+					<line fill="none" stroke="#F39200" stroke-width="1.5" stroke-miterlimit="10" x1="3.603" y1="96.667" x2="122.25" y2="63.659"/>
+				<g>
+					<path fill="#F39200" d="M128.791,61.839c-2.76,1.999-6.037,5.009-7.83,7.732l0.431-5.673l-3.298-4.635
+						C121.035,60.668,125.396,61.554,128.791,61.839z"/>
+				</g>
+			</g>
+		</g>
+		<g>
+			<g>
+				
+					<line fill="none" stroke="#2FAC66" stroke-width="1.5" stroke-miterlimit="10" x1="3.603" y1="96.667" x2="118.357" y2="141.368"/>
+				<g>
+					<path fill="#2FAC66" d="M124.684,143.833c-3.407-0.055-7.835,0.391-10.902,1.495l3.746-4.283l0.138-5.687
+						C119.177,138.247,122.137,141.569,124.684,143.833z"/>
+				</g>
+			</g>
+		</g>
+		<g>
+			<g>
+				<line fill="none" stroke="#36A9E1" stroke-width="1.5" stroke-miterlimit="10" x1="3.603" y1="96.667" x2="97.297" y2="16.74"/>
+				<g>
+					<path fill="#36A9E1" d="M102.462,12.334c-1.661,2.975-3.364,7.086-3.843,10.311l-2-5.326l-4.944-2.814
+						C94.935,14.54,99.263,13.506,102.462,12.334z"/>
+				</g>
+			</g>
+		</g>
+		<circle fill="#C6C6C6" stroke="#C6C6C6" stroke-miterlimit="10" cx="4.218" cy="96.95" r="3.718"/>
+		<path fill="none" stroke="#B2B2B2" stroke-miterlimit="10" d="M40.498,119.584c13.069-9.972,15.468-28.752,5.37-41.989"/>
+		<circle fill="#36A9E1" stroke="#36A9E1" stroke-miterlimit="10" cx="58.75" cy="49.917" r="1.466"/>
+		<circle fill="#F39200" stroke="#F39200" stroke-miterlimit="10" cx="72.226" cy="77.595" r="1.466"/>
+		<circle fill="#36A9E1" stroke="#36A9E1" stroke-miterlimit="10" cx="18.168" cy="84.055" r="1.466"/>
+		<circle fill="#2FAC66" stroke="#2FAC66" stroke-miterlimit="10" cx="21.757" cy="103.581" r="1.466"/>
+		<circle fill="#F39200" stroke="#F39200" stroke-miterlimit="10" cx="49.365" cy="84.055" r="1.466"/>
+		<circle fill="#2FAC66" stroke="#2FAC66" stroke-miterlimit="10" cx="46.306" cy="113.724" r="1.466"/>
+		<text transform="matrix(1 0 0 1 69.4761 61.8389)" font-family="'Symbol'" font-size="10">q</text>
+		<text transform="matrix(0.583 0 0 0.583 74.686 65.1689)" font-family="'ArialMT'" font-size="10">12</text>
+		<text transform="matrix(1 0 0 1 24.2227 100.042)" font-family="'Symbol'" font-size="10">q</text>
+		<text transform="matrix(0.583 0 0 0.583 29.4326 103.3721)" font-family="'ArialMT'" font-size="10">13</text>
+		<text transform="matrix(1 0 0 1 53.6118 102.1152)" font-family="'Symbol'" font-size="10">q</text>
+		<text transform="matrix(0.583 0 0 0.583 58.8218 105.4453)" font-family="'ArialMT'" font-size="10">23</text>
+	</g>
+	<line fill="none" x1="85.333" y1="0" x2="88.667" y2="2.167"/>
+	<polyline fill="none" stroke="#009FE3" stroke-miterlimit="10" points="105.037,7.056 107.656,4.611 110.031,6.987 	"/>
+	<polyline fill="none" stroke="#F39200" stroke-miterlimit="10" points="129.703,58.1 132.322,55.655 134.697,58.03 	"/>
+	<polyline fill="none" stroke="#2FAC66" stroke-miterlimit="10" points="125.454,140.449 128.073,138.005 130.448,140.38 	"/>
+</g>
+</svg>
