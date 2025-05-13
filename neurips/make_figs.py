@@ -2,6 +2,7 @@ import os, sys, logging, pickle
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import cm
+from matplotlib.patches import Rectangle
 import pandas as pd
 
 git_path = os.environ["GIT"]
@@ -27,12 +28,22 @@ import olfactory_bulb as ob
 import odours as od
 import sisters_util as util
 
-class ConnectivitySchematic:
+class BaseFigure:
+    def __init__(self):
+        pass
+
+    def prep(self):
+        raise NotImplementedError("prep() method not implemented")
+
+    def plot(self):
+        raise NotImplementedError("plot() method not implemented")
+
+class ConnectivitySchematic(BaseFigure):
     def __init__(self, args):
         self.args = args
         self.prep(args)
 
-    def prep(self, args):
+    def prep(self):
         print("Preparing connectivity schematic")
         np.random.seed(5)
         M, N = 50, 200
@@ -160,14 +171,14 @@ class ConnectivitySchematic:
         
         plt.tight_layout()
         #plt.show()
-        output_file = os.path.join(args.output_dir, "connectivity.pdf")
+        output_file = os.path.join(self.args.output_dir, "connectivity.pdf")
         plt.savefig(output_file, bbox_inches="tight")
         print(f"Figure saved to {output_file}.")
 
-class InferenceDynamics:
+class InferenceDynamics(BaseFigure):
     def __init__(self, args):
         self.args = args
-        self.prep(args)
+        self.prep()
 
     @staticmethod
     def mystem(x, y, *args, **kwargs):
@@ -202,7 +213,7 @@ class InferenceDynamics:
         return res0, res1, odour, noise, ob0, ob1
         
         
-    def prep(self, args, force = False):
+    def prep(self, force = False):
         np.random.seed(5)
         M, N = 50, 200
         n = 5
@@ -252,7 +263,6 @@ class InferenceDynamics:
         self.df = df
         self.out1 = out1
 
-
     def plot(self):
         N = self.N
         n = self.n
@@ -298,10 +308,132 @@ class InferenceDynamics:
         plt.ylim([-0.025,1]); plt.grid(True)
         label_axes.label_axes([ax_inf, ax_err, ax_tc], "ABC", fontsize=12,fontweight="bold")
 
-        output_file = os.path.join(args.output_dir, "inference.pdf")
+        output_file = os.path.join(self.args.output_dir, "inference.pdf")
+        plt.savefig(output_file, bbox_inches="tight")
+        print(f"Figure saved to {output_file}.")
+
+
+class InferringThePrior(BaseFigure):
+    def __init__(self, args):
+        self.args = args
+        self.prep()
+
+    def prep(self):
+        from sisters_experiments import Experiment
+        from essential_oils import EssentialOils
+
+        sisters = Experiment()
+        sisters.compute_responses()
+        
+        eo = EssentialOils(
+            essential_oils_file = project_path + "/data/essential_oil_composition.csv", 
+            smiles_file = project_path + "/data/smiles_names.csv",
+        )
+
+        sm_db = eo.smiles_db
+        # Any overlap of the essential oils with the odours?
+        sm_od = {od:sm_db.get_smiles(od) for mo,od in sisters.odour_names.items()}
+        sm_od_list = [k[0] for k in sm_od.values() if k is not None]
+        first = lambda x: x if x is None else x[0]
+        sisters.odour_smiles = [first(sm_db.get_smiles(od)) for od in sisters.odour_names.values()]        
+
+        # Compute the intersection of the two smiles lists
+        overlap = sorted(list(set(sm_od_list).intersection(set(eo.smiles))))
+        print("Overlap between essential oils and odours of",len(overlap), "items:", "\n".join(overlap))
+
+        pairs_ods = []
+        for i1, sm1 in enumerate(overlap[:-1]):
+            for sm2 in overlap[i1+1:]:
+                oils = eo.has_all_components([sm1, sm2])
+                if len(oils) == 0:
+                    continue
+                ind1 = sisters.odour_smiles.index(sm1)
+                ind2 = sisters.odour_smiles.index(sm2)
+                pairs_ods.append((sm1, sm2, ind1, ind2, oils))
+                if len(oils):
+                    print(sm1, sm_db.get_name(sm1),  sm2, sm_db.get_name(sm2),  "co-occur in", oils)
+
+        odours = sisters.odours
+        vp = [sisters.vapour_pressures[od] for od in odours]
+
+        C, C_glom = sisters.compute_covariance()
+        Q = np.array([Si * np.abs(Ci) for Si, Ci in zip(sisters.S_vals, C_glom)]).sum(axis=0)
+        ee,rr = np.linalg.eigh(Q)
+        assert np.allclose(Q @ rr[:, -1], ee[-1] * rr[:, -1])
+        r = rr[:, -1]
+        
+        self.r = r
+        self.sisters = sisters
+        self.vp = vp
+        self.overlap = overlap
+        self.pairs_ods = pairs_ods
+    
+
+    def plot(self):
+        sisters = self.sisters
+        vp = self.vp
+        r  = self.r
+        overlap = self.overlap
+        pairs_ods = self.pairs_ods
+
+        vp_scales = 2+0.5/(np.array(vp) + 1e-1)
+        scales = [("Constant", 1),
+                  ("f(Vapour Pressure)", vp_scales),
+                  ("1/Eigenvector", 1/r),
+        ]
+        C_scales = [sisters.compute_covariance(scales=sc)[0] for name, sc in scales]
+        
+        fig = plt.figure(figsize=(16,6))
+        ax_lab = []
+        for i, ((name, scale),Ci) in enumerate(zip(scales, C_scales)):
+            ax = plt.subplot(1, 3, i+1)
+        
+            if i == 0:
+                Z = linkage(Ci, method="complete", metric="correlation")
+                leaf_order = dendrogram(Z, no_plot=True)["leaves"]
+                sdi = np.std(Ci)
+            Ci = Ci/ np.std(Ci) * sdi
+        
+            if i == 0:
+                vmin, vmax = np.percentile(abs(Ci), [1, 99])
+            im =  plt.matshow(Ci[leaf_order][:, leaf_order], cmap="bwr", vmin = -vmax, vmax = vmax, fignum=False); #colorbar()
+            
+            # Mark the overlaps with a black edged rectangle wih transparent fill
+            for sm1, sm2, ind1, ind2, oils in pairs_ods:
+                if ind1 not in leaf_order or ind2 not in leaf_order:
+                    continue
+                i1 = leaf_order.index(ind1)
+                i2 = leaf_order.index(ind2)
+                ax.add_patch(Rectangle((i1-0.5, i2-0.5), 1, 1, edgecolor="black", facecolor="none", lw=0.5))
+        
+                #ax.add_patch(Rectangle((i1-0.5,i2-0.5), 1, 1, color="black", alpha=0.3))
+                
+            for ii, li in enumerate(leaf_order):
+                if sisters.odour_smiles[li] in overlap:
+                    ax.axvline(ii, color="black", ls=":", lw=0.5)
+                    ax.axhline(ii, color="black", ls=":", lw=0.5)
+                #ax.text(i1+0.5, i2+0.5, ", ".join(oils), ha="center", va="center", fontsize=8)
+        
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("bottom", size="5%", pad=0.4)
+            fig.colorbar(im, cax=cax, orientation="horizontal")    
+            #fig.colorbar(im, ax=ax, orientation="horizontal", pad=0.2)
+        
+            od_labs = [sisters.odour_names[sisters.odours[i]] for i in leaf_order]
+            ax.set_xticks(range(len(Ci)));
+            ax.set_xticklabels(od_labs, rotation=90, fontsize=7)
+            ax.set_yticks(range(len(Ci)))    
+            ax.set_yticklabels(od_labs if i == 0 else [], rotation=0, fontsize=7)
+            ax.set_title(f"Concentrations ~ {name}", fontsize=14)
+            ax_lab.append(ax)
+        
+        label_axes.label_axes(ax_lab, "ABC", fontsize=16,fontweight="bold")
+
+        output_file = os.path.join(self.args.output_dir, "inferred_priors.pdf")
         plt.savefig(output_file, bbox_inches="tight")
         print(f"Figure saved to {output_file}.")
         
+    
 from argparse import ArgumentParser
 
 if __name__ == "__main__":
@@ -332,7 +464,17 @@ if __name__ == "__main__":
         elif fig_num == 2:
             obj = InferenceDynamics(args)
             obj.plot()
-            
+        elif fig_num == 3:
+            pass
+        elif fig_num == 4:
+            obj = InferringThePrior(args)
+            obj.plot()
+            pass
+        else:
+            raise ValueError(f"Invalid figure number: {fig_num}")
+
+    print("ALLDONE")
+        
             
             
             
