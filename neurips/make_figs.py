@@ -1,4 +1,4 @@
-import os, sys
+import os, sys, logging, pickle
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import cm
@@ -171,7 +171,7 @@ class InferenceDynamics:
 
     @staticmethod
     def mystem(x, y, *args, **kwargs):
-        return np.plot([x, x], [0*np.array(y), y], *args, **kwargs)
+        return plt.plot([x, x], [0*np.array(y), y], *args, **kwargs)
 
     @staticmethod
     def gen_cov(N, n, rho):
@@ -184,7 +184,7 @@ class InferenceDynamics:
 
     @staticmethod
     def single_run(A_mean, C, n = 5, S_min_max = [4,9], sd_inf = 20, sd_n = 0.1, be = 0.1, ga = 0.1, seed = 2):
-        random.seed(seed)
+        np.random.seed(seed)
         M, N = A_mean.shape
         Smin, Smax = S_min_max
         Svals = [np.random.randint(Smin, Smax) for i in range(M)]; 
@@ -197,54 +197,57 @@ class InferenceDynamics:
         tau_mc = 0.05
         ob0 = ob.OlfactoryBulb(A0, sd_inf, be, ga, tau_gc=tau_gc, tau_mc = tau_mc, verbosity=0, enforce_ga=True)
         ob1 = ob.OlfactoryBulb(A1, sd_inf, be, ga, tau_gc=tau_gc, tau_mc = tau_mc, verbosity=0, enforce_ga=True)
-        noise = sd_n * randn(*y.shape)
+        noise = sd_n * np.random.randn(*y.shape)
         res0 = ob0.run_exact(y + noise); res1 = ob1.run_exact(y+noise)
         return res0, res1, odour, noise, ob0, ob1
         
         
-    def prep(self, args, force = False):
+    def prep(self, args):
         np.random.seed(5)
         M, N = 50, 200
         n = 5
-        C = self.gen_cov2(N, n, -0.24)
+        C = self.gen_cov(N, n, -0.24)
         ob.logger.setLevel(logging.ERROR)
         od.logger.setLevel(logging.ERROR)
         A_mean = np.random.randn(M, N)
-        sd_inf_vals = [10,20,50] #[1, 2, 5, 10, 20, 50, 100]
-        n_trials   = 2#5
+        sd_inf_vals = [1, 2, 5, 10, 20, 50, 100]
+        n_trials   = 5
         results = []
         err_fun = lambda x: np.linalg.norm(x, 2)
-        if not os.path.exists("results.p") or force:
-            keep = []
-            for j, sd_inf in enumerate(sd_inf_vals):
-                for i in range(n_trials):
-                    res0, res1, odour, noise, ob0, ob1 = self.single_run(A_mean, C, S_min_max = [4,9], sd_inf = sd_inf, sd_n = 0.5, be = 0.1, ga = 0.1, seed = i)
-                    x0 = res0["x"]
-                    x1 = res1["x"]
-                    x_true = arange(N) < n
-                    err0 = err_fun(x0 - x_true)
-                    err1 = err_fun(x1 - x_true)
-                    results.append({"sd_inf": sd_inf, "trial": i, "x0err": err0, "x1err": err1})
-                    print(f"sd_inf = {sd_inf}, trial = {i}, |x0 - x_true| = {err0:.3f}, |x1 - x_true| = {err1:.3f}")
-                    if sd_inf == 20 and i == 0:
-                        keep = [res0, res1, odour, noise, ob0, ob1]
-    
-            df = pd.DataFrame(results)
 
-            out1 = ob1.run_sister(odour.value_at(0.5) +noise, t_end = 3, dt=2e-4, keep_every=10)
+        keep = []
+        for j, sd_inf in enumerate(sd_inf_vals):
+            for i in range(n_trials):
+                res0, res1, odour, noise, ob0, ob1 = self.single_run(A_mean, C, S_min_max = [4,9], sd_inf = sd_inf, sd_n = 0.5, be = 0.1, ga = 0.1, seed = i)
+                x0 = res0["x"]
+                x1 = res1["x"]
+                x_true = np.arange(N) < n
+                err0 = err_fun(x0 - x_true)
+                err1 = err_fun(x1 - x_true)
+                results.append({"sd_inf": sd_inf, "trial": i, "x0err": err0, "x1err": err1})
+                print(f"sd_inf = {sd_inf}, trial = {i}, |x0 - x_true| = {err0:.3f}, |x1 - x_true| = {err1:.3f}")
+                if sd_inf == 20 and i == 0:
+                    keep = [res0, res1, odour, noise, ob0, ob1]
 
-            with open("results.p", "wb") as f:
-                pickle.dump((df, keep, out1), f)
-            print("Results saved to results.p.")
-        else:
-            with open("results.p", "rb") as f:
-                df, keep, out1 = pickle.load(f)
+        df = pd.DataFrame(results)
 
-            print("Results loaded from results.p.")
+        out1 = ob1.run_sister(odour.value_at(0.5) +noise, t_end = 3, dt=2e-4, keep_every=10)
                     
-        res0, res1, odour, noise, ob0, ob1 = keep        
+        res0, res1, odour, noise, ob0, ob1 = keep
+
+        self.N = N
+        self.n = n
+        self.keep = keep
+        self.df = df
+        self.out1 = out1
 
     def plot(self):
+        N = self.N
+        n = self.n
+        keep = self.keep
+        df   = self.df
+        out1 = self.out1
+        
         plt.figure(figsize=(8, 3))
         gs = GridSpec(1, 6)
         ax_inf = plt.subplot(gs[0,:2])
@@ -265,9 +268,9 @@ class InferenceDynamics:
         # Make a plot whose x-axis is σ_inf, and whose y-axis is the mean of the errors over the trials
         # Make it a line plot, connecting x0err, and a line plot connecting x1err, and use log scale on the y-axis
         # Add error bars to show the standard deviation of the errors over the trials
-        df.groupby("sd_inf").mean().plot(y = ["x0err", "x1err"], logx = True, logy = True, yerr = df.groupby("σ_inf").std(), marker = "o", ax = ax_err)
+        df.groupby("sd_inf").mean().plot(y = ["x0err", "x1err"], logx = True, logy = True, yerr = df.groupby("sd_inf").std(), marker = "o", ax = ax_err)
         plt.gca().legend(["Indep.", "Coact."],  fontsize=10, frameon=False, labelspacing=0.2)
-        plt.xlabel("$\sigma_{inf}$", fontsize=14)
+        plt.xlabel("sd$_{inf}$", fontsize=14)
         plt.ylabel("Error", fontsize=14, labelpad=-10)
         # Get the y-axis ticks and convert them to decimal notation
         plt.tight_layout()
@@ -280,12 +283,13 @@ class InferenceDynamics:
         plt.plot(out1["T"][-1]*np.ones(10), x_exact, "r<", markersize=12)
         plt.xlabel("Time (s)", fontsize=14)
         plt.ylabel("Value", fontsize=14)
-        plt.ylim([-0.025,1]); grid(True)
+        plt.ylim([-0.025,1]); plt.grid(True)
         label_axes.label_axes([ax_inf, ax_err, ax_tc], "ABC", fontsize=12,fontweight="bold")
-        plt.savefig(os.path.join(fig_path , "inference.pdf"), bbox_inches="tight")        
 
-
-
+        output_file = os.path.join(args.output_dir, "inference.pdf")
+        plt.savefig(output_file, bbox_inches="tight")
+        print(f"Figure saved to {output_file}.")
+        
 from argparse import ArgumentParser
 
 if __name__ == "__main__":
@@ -296,7 +300,7 @@ if __name__ == "__main__":
     
     fig_name = args.fig.lower()
     # Fig name should be either all, or a comma-separted list of integers
-    which_figs = map(int, fig_name.split(",")) if fig_name != "all" else range(1, 5)
+    which_figs = list(map(int, fig_name.split(","))) if fig_name != "all" else range(1, 5)
     # Check that all requested figures are valid
     assert all([f in range(1, 5) for f in which_figs]), f"Invalid figure number(s): {fig_name}"
     # Check that the output directory exists
@@ -306,6 +310,8 @@ if __name__ == "__main__":
     # Check that the output directory is writable
     assert os.access(args.output_dir, os.W_OK), f"Output directory is not writable: {args.output_dir}"
 
+    print(f"Making figures {which_figs} in {args.output_dir}...")
+    
     for fig_num in which_figs:
         print(f"Making Figure {fig_num}...")
         if fig_num == 1:            
