@@ -211,7 +211,7 @@ class InferenceDynamics:
         od.logger.setLevel(logging.ERROR)
         A_mean = np.random.randn(M, N)
         sd_inf_vals = [1, 2, 5, 10, 20, 50, 100]
-        n_trials   = 5
+        n_trials = 5
         results = []
         err_fun = lambda x: np.linalg.norm(x, 2)
 
@@ -225,15 +225,17 @@ class InferenceDynamics:
                     x_true = np.arange(N) < n
                     err0 = err_fun(x0 - x_true)
                     err1 = err_fun(x1 - x_true)
-                    inf_dyn.append({"sd_inf": sd_inf, "trial": i, "x0err": err0, "x1err": err1})
+                    results.append({"sd_inf": sd_inf, "trial": i, "x0err": err0, "x1err": err1})
                     print(f"sd_inf = {sd_inf}, trial = {i}, |x0 - x_true| = {err0:.3f}, |x1 - x_true| = {err1:.3f}")
                     if sd_inf == 20 and i == 0:
-                        keep = [res0, res1]
+                        keep = [res0, res1, odour, noise, ob0, ob1]
     
             df = pd.DataFrame(results)
-    
+            res0, res1, odour, noise, ob0, ob1 = keep
             out1 = ob1.run_sister(odour.value_at(0.5) +noise, t_end = 3, dt=2e-4, keep_every=10)
 
+            keep = keep[:2] # only keep res0 and res1
+            
             with open("inf_dyn.p", "wb") as f:
                 pickle.dump((keep, df, out1), f)
 
@@ -242,9 +244,7 @@ class InferenceDynamics:
         else:
             print(f"Loading results from inf_dyn.p")
             with open("inf_dyn.p", "rb") as f:
-                keep, df, out1 = pickle.load(f)                            
-                        
-        res0, res1 = keep
+                keep, df, out1 = pickle.load(f)                                                    
     
         self.N = N
         self.n = n
