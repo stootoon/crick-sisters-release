@@ -153,6 +153,7 @@ class ConnectivitySchematic(Figure):
         align_x = [[0,4,7,10],[3,5,8,11],[6,9,12]]
 
         post_align_dx = [0]*13
+        post_align_dx[3] += 0.05
         for iax in [5,6,8,9,11,12]:
             post_align_dx[iax] -= 0.02
         
