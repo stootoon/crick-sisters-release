@@ -37,6 +37,11 @@ from matplotlib.gridspec import GridSpec
 from scipy.cluster.hierarchy import dendrogram, linkage
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+def spines_off(ax = plt.gca(), which=["top", "right"]):
+    for w in which:
+        ax.spines[w].set_visible(False)
+    return ax
+
 import olfactory_bulb as ob
 import odours as od
 import sisters_util as util
@@ -454,12 +459,6 @@ class FigConnectivitySchematic(Figure):
 class FigConnectivityDynamics(Figure):
 
     @staticmethod
-    def spines_off(ax = plt.gca(), which=["top", "right"]):
-        for w in which:
-            ax.spines[w].set_visible(False)
-        return ax
-
-    @staticmethod
     def plot_diversity_cumfrac(c, cols = ["tan", "wheat", "chocolate"][::-1], thresh =[0, 0.7, 0.9], ax = None, **kwargs):
         ax = plt.gca() if ax is None else ax
         r = c.flatten()
@@ -561,31 +560,31 @@ class FigConnectivityDynamics(Figure):
                 (i == len(out)-1) and new_ax.set_xlabel("Time (sec)")
                 (j == 0) and new_ax.set_ylabel(name, fontsize=14, labelpad=-5)
                 new_ax.set_xticks([0, 0.5, 1])
-                self.spines_off(new_ax)
+                spines_off(new_ax)
                 if j == 0:
                     lab_ax.append(new_ax)
             
             new_ax = plt.subplot(gs[slice(rows[0], rows[1]+1), j+1])
             ax["resp"][f"sim{i}"].append(new_ax)
-            self.plot_diversity_cumfrac(corrs[i], ax=new_ax, lw=3)
+            FigConnectivityDynamics.plot_diversity_cumfrac(corrs[i], ax=new_ax, lw=3)
             (i == 2) and new_ax.set_xlabel("temporal similarity index")
             new_ax.set_ylabel("cumu. frac. glom-odour", fontsize=8, labelpad=-1)
             new_ax.tick_params(axis='both', labelsize=10)
             new_ax.set_xticks([0, 0.3, 0.7, 1])
             new_ax.set_yticks([0, 0.31, 0.69, 1])
-            self.spines_off(new_ax)
+            spines_off(new_ax)
             lab_ax.append(new_ax)
         
             new_ax = plt.subplot(gs[slice(rows[0], rows[1]+1), j+2])
             ax["resp"][f"sim{i}"].append(new_ax)
-            self.plot_diversity_bars(corrs[i], ax=new_ax)
+            FigConnectivityDynamics.plot_diversity_bars(corrs[i], ax=new_ax)
             # The yticks are in fractions of 1, so we need to convert them to percentages
             new_ax.set_yticks([0, 25, 50, 75, 100])
             new_ax.set_ylabel("glom %", labelpad=-5)
             # Set the tick fontsize to 8
             new_ax.tick_params(axis='both', labelsize=10)
             (i < 2) and new_ax.set_xlabel("")
-            self.spines_off(new_ax)
+            spines_off(new_ax)
             lab_ax.append(new_ax)
             
         
@@ -598,7 +597,7 @@ class FigConnectivityDynamics(Figure):
             rows = list(row_offset + np.arange(n_rows_per_conn))
             new_ax = plt.subplot(gs[slice(rows[0], rows[-1]+1), :-1])
             ax["conn"].append(new_ax)
-            self.plot_W1(details, plot_data.Svals, plot_data.N, ax=new_ax, ls = "k:")
+            FigConnectivityDynamics.plot_W1(details, plot_data.Svals, plot_data.N, ax=new_ax, ls = "k:")
             new_ax.axis("auto")
             new_ax.set_xlim(0, sum(ob_arr[0].S))
             new_ax.set_ylim(0, ob_arr[0].N-1)
@@ -642,9 +641,9 @@ class FigInferenceDynamics(Figure):
         x1 = keep[1]["x"]
         # Make a plot where we show the first 10 elements of the true x, the first 10 elements of x0, and the first 10 elements of x1
         # We do these as stem plots, and staggered to avoid overlap
-        h0 = self.mystem(np.arange(10), x_true[:10],   "o-", label = "x_true", color = "gray", markersize=2, lw=2)
-        h1 = self.mystem(np.arange(10) + 0.2, x1[:10], "o-", label = "x1", color = "C1", markersize=2, lw=2)
-        h2 = self.mystem(np.arange(10) + 0.4, x0[:10], "o-", label = "x0", color = "C0", markersize=2, lw=2)
+        h0 = FigInferenceDynamics.mystem(np.arange(10), x_true[:10],   "o-", label = "x_true", color = "gray", markersize=2, lw=2)
+        h1 = FigInferenceDynamics.mystem(np.arange(10) + 0.2, x1[:10], "o-", label = "x1", color = "C1", markersize=2, lw=2)
+        h2 = FigInferenceDynamics.mystem(np.arange(10) + 0.4, x0[:10], "o-", label = "x0", color = "C0", markersize=2, lw=2)
         plt.plot(plt.xlim(),[0,0], "k--", lw=0.5)
         plt.legend([h0[0], h1[0], h2[0]], ["True", "Corr.", "Indep."], loc = "upper right", fontsize=10, frameon=False, labelspacing=0.2)
         plt.xlabel("Feature Index", fontsize=14)
