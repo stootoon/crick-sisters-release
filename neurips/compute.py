@@ -52,7 +52,6 @@ class ConnectivitySchematic(Computation):
         self.computed = True
         print("DONE COMPUTING CONNECTIVITY SCHEMATIC DATA.")
     
-
 class ConnectivityDynamics(Computation):
     @staticmethod
     def gen_sparse_cov(N, n, rho = 0.9, sp = 0.1):
@@ -64,7 +63,22 @@ class ConnectivityDynamics(Computation):
         C = np.eye(N)
         C[:n, :n] = Cnn
         return C
-    
+
+    @staticmethod
+    def compute_affinity_and_correlation_from_weights(A):
+        """
+        Given a list of Si x N sister cell weights,
+        computes the implied affinity and prior correlation.
+        """
+        S   = [len(Ai) for Ai in A]
+        aff = np.array([Ai.mean(axis=0) for Ai in A]) # Affinity is the mean across sister cells
+        Ams = [Ai - affi for Ai,affi in zip(A, aff)]        
+        Ci  = [np.cov(Ai.T, bias=True) for Ai in A]
+        C   = np.average(Ci, weights = S, axis = 0) * np.sum(S) # Weighted sum of covariances from each input channel
+        Ams_= np.vstack(Ams)
+        assert np.allclose(C, Ams_.T @ Ams_), "Covariance computed as weighted sum of input channels does not match covariance computed directly from weights."
+        return aff, C
+            
     def compute(self, force = False):
         print("PREPPING CONNECTIVITY DYNAMICS DATA...")
         print("\tGenerating sparse covariance matrix...")
@@ -103,6 +117,9 @@ class ConnectivityDynamics(Computation):
                 data_read = pickle.load(f)
 
             ob_arr = data_read["ob_arr"]
+            A1_0 = data_read["A1_0"]
+            A1_1 = data_read["A1_1"]
+            A1_w = data_read["A1_w"]
             details1_0 = data_read["details1_0"]
             details1_1 = data_read["details1_1"]
             details1_w = data_read["details1_w"]
@@ -152,6 +169,10 @@ class ConnectivityDynamics(Computation):
 
         self.Svals = Svals
         self.N = N
+
+        self.A1_0 = A1_0
+        self.A1_1 = A1_1
+        self.A1_w = A1_w
         
         self.details1_0 = details1_0
         self.details1_1 = details1_1

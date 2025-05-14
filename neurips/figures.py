@@ -5,6 +5,8 @@ from matplotlib import cm
 import matplotlib.patches as patches
 from matplotlib.patches import Rectangle
 
+import compute
+
 git_path = os.environ["GIT"]
 sys.path.append(git_path)
 
@@ -17,7 +19,6 @@ except ImportError:
         @staticmethod
         def label_axes(*args, **kwargs):
             pass
-
         
 project_path = os.path.join(git_path, "crick-sisters-release")
 sys.path.append(project_path)
@@ -92,7 +93,11 @@ class ConnectivitySchematic(Figure):
         n_cols_per_conn = 12
         n_cols_per_cov = 2
         n_cols_per_aff = 2
-        for i, (name, details) in enumerate(zip(["Random", "Sparse", "Weighted"], [plot_data.details1_0, plot_data.details1_1, plot_data.details1_w])):
+        for i, (name, details, A) in enumerate(zip(
+                ["Random", "Sparse", "Weighted"],
+                [plot_data.details1_0, plot_data.details1_1, plot_data.details1_w],
+                [plot_data.A1_0, plot_data.A1_1, plot_data.A1_w]
+        )):
             cols_offset = 0
             rows = list(row_offset + np.arange(n_rows_per_conn))
             row_slice = slice(rows[0], rows[-1]+1)
@@ -112,11 +117,12 @@ class ConnectivitySchematic(Figure):
             cols_offset += n_cols_per_conn
             new_ax = plt.subplot(gs[row_slice, cols_offset:cols_offset + n_cols_per_cov])
             Wsol = details["Wsol"]
-            new_ax.matshow(np.cov(Wsol.T, bias=True))
+            aff, C = compute.ConnectivityDynamics.compute_affinity_and_correlation_from_weights(A)
+            new_ax.matshow(C)
             cols_offset += n_cols_per_cov
             lab_ax.append(new_ax)
             new_ax = plt.subplot(gs[row_slice, cols_offset:cols_offset + n_cols_per_aff])
-            new_ax.plot(Wsol.mean(axis=0))
+            new_ax.plot(aff.T[:,:2])
                 
         
         #label_axes.label_axes([ax_mean, ax_cov, ax_angle, ax_rot, ax_conn1, ax_conn2, ax_mean2], "ABCDEFG", fontsize=24, fontweight="bold")
@@ -417,13 +423,3 @@ class InferringThePrior(Figure):
         plt.savefig(output_file, bbox_inches="tight")
         print(f"Figure saved to {output_file}.")
         print("DONE PLOTTING PRIOR INFERENCE FIGURE.")
-        
-
-        
-            
-            
-            
-    
-        
-    
-
