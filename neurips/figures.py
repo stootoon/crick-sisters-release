@@ -32,7 +32,7 @@ plt.rcParams['axes.spines.right'] = False
 plt.style.use("default")
 
 from matplotlib.gridspec import GridSpec
-from scipy.cluster.hierarchy import dendrogram, linkage
+from scipy.cluster.hierarchy import dendrogram, linkage, leaves_list
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 def spines_off(ax = plt.gca(), which=["top", "right"]):
@@ -55,13 +55,17 @@ class Figure:
         raise NotImplementedError("plot() method not implemented")
 
 class ConnectivitySchematic(Figure):
+    label_fontsize = 24
+    axis_label_fontsize = 24
+    
     @staticmethod
     def plot(args, plot_data):
+        Class = ConnectivitySchematic
         
         print("PLOTTING CONNECTIVITY SCHEMATIC")
         n_rows, n_cols = 24, 16
         gs = GridSpec(n_rows, n_cols)
-        plt.figure(figsize=(24, 10))
+        plt.figure(figsize=(40, 18))
         
         ax_mean = plt.subplot(gs[:12,:4])
         im_file = art_path + "/sister_conn_mean.jpg"
@@ -98,36 +102,60 @@ class ConnectivitySchematic(Figure):
                 [plot_data.details1_0, plot_data.details1_1, plot_data.details1_w],
                 [plot_data.A1_0, plot_data.A1_1, plot_data.A1_w]
         )):
+            aff, C = compute.ConnectivityDynamics.compute_affinity_and_correlation_from_weights(A)
+            if i == 0:
+                link = linkage(C, method='ward')
+                order = leaves_list(link)
+            
             cols_offset = 0
             rows = list(row_offset + np.arange(n_rows_per_conn))
             row_slice = slice(rows[0], rows[-1]+1)
             new_ax = plt.subplot(gs[row_slice, :n_cols_per_conn])
-            ax["conn"].append(new_ax)
-            ConnectivityDynamics.plot_W1(details, plot_data.Svals, plot_data.N, ax=new_ax, ls = "k:")
+            ConnectivityDynamics.plot_W1(details, plot_data.Svals, plot_data.N, row_order = order, ax=new_ax, ls = "k:", lw=2)
             new_ax.axis("auto")
             new_ax.set_xlim(0, sum(plot_data.Svals))
             new_ax.set_ylim(0, plot_data.N-1)
             new_ax.set_xticks([]); new_ax.set_yticks([])
             row_offset = rows[-1]+1
-            i == 2 and new_ax.set_xlabel("Mitral cell", fontsize=14)
-            new_ax.set_ylabel(f"GC", fontsize=14)
+            i == 2 and new_ax.set_xlabel("Mitral cell", fontsize=Class.axis_label_fontsize)
+            new_ax.set_ylabel(f"Latent", fontsize=Class.axis_label_fontsize)
             # Left align the title
             #new_ax.set_title(name, fontsize=18, loc="right", verticalalignment="top")
             lab_ax.append(new_ax)
+            ax["conn"].append(new_ax)
+            
             cols_offset += n_cols_per_conn
             new_ax = plt.subplot(gs[row_slice, cols_offset:cols_offset + n_cols_per_cov])
             Wsol = details["Wsol"]
-            aff, C = compute.ConnectivityDynamics.compute_affinity_and_correlation_from_weights(A)
-            new_ax.matshow(C)
+            new_ax.matshow(C[order[:10]][:, order[:10]], cmap=cm.bone_r)
+            new_ax.set_xticks([]); new_ax.set_yticks([]);
+            new_ax.set_ylabel("Latent", fontsize=Class.axis_label_fontsize)
+            new_ax.set_xlabel("Latent", fontsize=Class.axis_label_fontsize)
+            ax["conn"].append(new_ax)
+            
             cols_offset += n_cols_per_cov
             lab_ax.append(new_ax)
             new_ax = plt.subplot(gs[row_slice, cols_offset:cols_offset + n_cols_per_aff])
-            new_ax.plot(aff.T[:,:2])
+            if i == 0:
+                aff_order = np.argsort(aff[0])
+            new_ax.plot(aff.T[aff_order,:2])
+            new_ax.set_xlabel("Latent", fontsize=Class.axis_label_fontsize)
+            new_ax.set_ylabel("Affinity", fontsize=Class.axis_label_fontsize)
+            spines_off(new_ax)
+            ax["conn"].append(new_ax)
                 
-        
-        #label_axes.label_axes([ax_mean, ax_cov, ax_angle, ax_rot, ax_conn1, ax_conn2, ax_mean2], "ABCDEFG", fontsize=24, fontweight="bold")
-        
         plt.tight_layout()
+        
+        align_y = [list(range(4))] + [[ii+4+offset for ii in range(3)] for offset in range(0,9,3)]
+        align_x = [[0,4,7,10],[3,5,8,11],[6,9,12]]
+        label_axes.label_axes([ax_mean, ax_cov, ax_angle, ax_rot] + ax["conn"],
+                              ["A", "B", "C", "D","Ei" , "Eii", "Eiii", "Fi", "Fii", "Fiii", "Gi", "Gii", "Giii"],
+                              align_y = align_y,
+                              align_x = align_x,
+                              dx = -0.02,
+                              fontsize=Class.label_fontsize, fontweight="bold")
+        
+
         #plt.show()
         output_file = os.path.join(args.output_dir, "schematic.pdf")
         plt.savefig(output_file, bbox_inches="tight")
@@ -158,13 +186,16 @@ class ConnectivityDynamics(Figure):
         plt.ylabel("stimulus %")
 
     @staticmethod
-    def plot_W1(d, Svals, N, vlim = 1/4, cmap="bwr", ls = "k", ax = None):
+    def plot_W1(d, Svals, N, row_order = None, vlim = 1/4, cmap="bwr", ls = "k", lw=1, ax = None):
         ax = gca() if ax is None else ax
-        ax.matshow(d["W1"].T, vmin=-1/4,vmax=1/4, cmap="bwr")
+        W1 = d["W1"]
+        if row_order is None:
+            row_order = np.arange(W1.shape[0])
+        ax.matshow((W1.T)[row_order], vmin=-1/4,vmax=1/4, cmap="bwr")
         yl = plt.ylim()
         xl = plt.xlim()
         xx = np.cumsum(Svals)
-        plt.plot([xx, xx], [-1+0*xx, (N)+0*xx], ls, lw=1)
+        plt.plot([xx, xx], [-1+0*xx, (N)+0*xx], ls, lw=lw)
         plt.xlim(xl); plt.ylim(yl)
 
     @staticmethod
