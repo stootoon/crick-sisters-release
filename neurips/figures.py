@@ -55,8 +55,8 @@ class Figure:
         raise NotImplementedError("plot() method not implemented")
 
 class ConnectivitySchematic(Figure):
-    label_fontsize = 24
-    axis_label_fontsize = 24
+    label_fontsize = 40
+    axis_label_fontsize = 30
     
     @staticmethod
     def plot(args, plot_data):
@@ -65,7 +65,7 @@ class ConnectivitySchematic(Figure):
         print("PLOTTING CONNECTIVITY SCHEMATIC")
         n_rows, n_cols = 24, 16
         gs = GridSpec(n_rows, n_cols)
-        plt.figure(figsize=(40, 18))
+        plt.figure(figsize=(30, 24))
         
         ax_mean = plt.subplot(gs[:12,:4])
         im_file = art_path + "/sister_conn_mean.jpg"
@@ -92,9 +92,9 @@ class ConnectivitySchematic(Figure):
 
         ax = {"conn": []}
         lab_ax = []
-        row_offset = 12
+        row_offset = 10
         n_rows_per_conn = 3
-        n_cols_per_conn = 12
+        n_cols_per_conn = 11
         n_cols_per_cov = 2
         n_cols_per_aff = 2
         for i, (name, details, A) in enumerate(zip(
@@ -133,26 +133,35 @@ class ConnectivitySchematic(Figure):
             new_ax.set_xlabel("Latent", fontsize=Class.axis_label_fontsize)
             ax["conn"].append(new_ax)
             
-            cols_offset += n_cols_per_cov
+            cols_offset += n_cols_per_cov+1
             lab_ax.append(new_ax)
             new_ax = plt.subplot(gs[row_slice, cols_offset:cols_offset + n_cols_per_aff])
             if i == 0:
                 aff_order = np.argsort(aff[0])
             new_ax.plot(aff.T[aff_order,:2])
             new_ax.set_xlabel("Latent", fontsize=Class.axis_label_fontsize)
+            # Set the tick sizes
+            new_ax.tick_params(axis='both', labelsize=20)
+            
             new_ax.set_ylabel("Affinity", fontsize=Class.axis_label_fontsize)
             spines_off(new_ax)
             ax["conn"].append(new_ax)
                 
-        plt.tight_layout()
+        plt.tight_layout(h_pad=0.02)
         
         align_y = [list(range(4))] + [[ii+4+offset for ii in range(3)] for offset in range(0,9,3)]
         align_x = [[0,4,7,10],[3,5,8,11],[6,9,12]]
+
+        post_align_dx = [0]*13
+        for iax in [5,6,8,9,11,12]:
+            post_align_dx[iax] -= 0.02
+        
         label_axes.label_axes([ax_mean, ax_cov, ax_angle, ax_rot] + ax["conn"],
                               ["A", "B", "C", "D","Ei" , "Eii", "Eiii", "Fi", "Fii", "Fiii", "Gi", "Gii", "Giii"],
                               align_y = align_y,
                               align_x = align_x,
                               dx = -0.02,
+                              post_align_dx = post_align_dx,
                               fontsize=Class.label_fontsize, fontweight="bold")
         
 
