@@ -98,7 +98,7 @@ class ConnectivitySchematic(Figure):
             row_slice = slice(rows[0], rows[-1]+1)
             new_ax = plt.subplot(gs[row_slice, :n_cols_per_conn])
             ax["conn"].append(new_ax)
-            FigConnectivityDynamics.plot_W1(details, plot_data.Svals, plot_data.N, ax=new_ax, ls = "k:")
+            ConnectivityDynamics.plot_W1(details, plot_data.Svals, plot_data.N, ax=new_ax, ls = "k:")
             new_ax.axis("auto")
             new_ax.set_xlim(0, sum(plot_data.Svals))
             new_ax.set_ylim(0, plot_data.N-1)
@@ -163,6 +163,7 @@ class ConnectivityDynamics(Figure):
 
     @staticmethod
     def plot(args, plot_data):
+        Class = ConnectivityDynamics
         print("PLOTTING CONNECTIVITY DYNAMICS FIGURE...")
         out1_0 = plot_data.out1_0
         out1_1 = plot_data.out1_1
@@ -238,7 +239,7 @@ class ConnectivityDynamics(Figure):
             
             new_ax = plt.subplot(gs[slice(rows[0], rows[1]+1), j+1])
             ax["resp"][f"sim{i}"].append(new_ax)
-            FigConnectivityDynamics.plot_diversity_cumfrac(corrs[i], ax=new_ax, lw=3)
+            Class.plot_diversity_cumfrac(corrs[i], ax=new_ax, lw=3)
             (i == 2) and new_ax.set_xlabel("temporal similarity index")
             new_ax.set_ylabel("cumu. frac. glom-odour", fontsize=8, labelpad=-1)
             new_ax.tick_params(axis='both', labelsize=10)
@@ -249,7 +250,7 @@ class ConnectivityDynamics(Figure):
         
             new_ax = plt.subplot(gs[slice(rows[0], rows[1]+1), j+2])
             ax["resp"][f"sim{i}"].append(new_ax)
-            FigConnectivityDynamics.plot_diversity_bars(corrs[i], ax=new_ax)
+            Class.plot_diversity_bars(corrs[i], ax=new_ax)
             # The yticks are in fractions of 1, so we need to convert them to percentages
             new_ax.set_yticks([0, 25, 50, 75, 100])
             new_ax.set_ylabel("glom %", labelpad=-5)
@@ -269,7 +270,7 @@ class ConnectivityDynamics(Figure):
             rows = list(row_offset + np.arange(n_rows_per_conn))
             new_ax = plt.subplot(gs[slice(rows[0], rows[-1]+1), :-1])
             ax["conn"].append(new_ax)
-            FigConnectivityDynamics.plot_W1(details, plot_data.Svals, plot_data.N, ax=new_ax, ls = "k:")
+            Class.plot_W1(details, plot_data.Svals, plot_data.N, ax=new_ax, ls = "k:")
             new_ax.axis("auto")
             new_ax.set_xlim(0, sum(ob_arr[0].S))
             new_ax.set_ylim(0, ob_arr[0].N-1)
@@ -298,6 +299,7 @@ class InferenceDynamics(Figure):
 
     @staticmethod
     def plot(args, plot_data):
+        Class = InferenceDynamics
         print("PLOTTING INFERENCE DYNAMICS FIGURE...")
         N = plot_data.N
         n = plot_data.n
@@ -313,9 +315,9 @@ class InferenceDynamics(Figure):
         x1 = keep[1]["x"]
         # Make a plot where we show the first 10 elements of the true x, the first 10 elements of x0, and the first 10 elements of x1
         # We do these as stem plots, and staggered to avoid overlap
-        h0 = FigInferenceDynamics.mystem(np.arange(10), x_true[:10],   "o-", label = "x_true", color = "gray", markersize=2, lw=2)
-        h1 = FigInferenceDynamics.mystem(np.arange(10) + 0.2, x1[:10], "o-", label = "x1", color = "C1", markersize=2, lw=2)
-        h2 = FigInferenceDynamics.mystem(np.arange(10) + 0.4, x0[:10], "o-", label = "x0", color = "C0", markersize=2, lw=2)
+        h0 = Class.mystem(np.arange(10), x_true[:10],   "o-", label = "x_true", color = "gray", markersize=2, lw=2)
+        h1 = Class.mystem(np.arange(10) + 0.2, x1[:10], "o-", label = "x1", color = "C1", markersize=2, lw=2)
+        h2 = Class.mystem(np.arange(10) + 0.4, x0[:10], "o-", label = "x0", color = "C0", markersize=2, lw=2)
         plt.plot(plt.xlim(),[0,0], "k--", lw=0.5)
         plt.legend([h0[0], h1[0], h2[0]], ["True", "Corr.", "Indep."], loc = "upper right", fontsize=10, frameon=False, labelspacing=0.2)
         plt.xlabel("Feature Index", fontsize=14)
