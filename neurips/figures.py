@@ -1,0 +1,427 @@
+import os, sys, logging
+import numpy as np
+from matplotlib import pyplot as plt
+from matplotlib import cm
+import matplotlib.patches as patches
+from matplotlib.patches import Rectangle
+
+git_path = os.environ["GIT"]
+sys.path.append(git_path)
+
+try:
+    from label_axes import label_axes
+except ImportError:
+    # Define a dummy function if label_axes is not available
+    print("label_axes module not found. Using dummy function.")
+    class label_axes:
+        @staticmethod
+        def label_axes(*args, **kwargs):
+            pass
+
+        
+project_path = os.path.join(git_path, "crick-sisters-release")
+sys.path.append(project_path)
+
+art_path     = os.path.join(project_path, "art")
+fig_path     = os.path.join(art_path, "figs")
+
+plt.rcParams['figure.figsize']    = [8, 3]
+plt.rcParams['axes.spines.top']   = False
+plt.rcParams['axes.spines.right'] = False
+plt.style.use("default")
+
+from matplotlib.gridspec import GridSpec
+from scipy.cluster.hierarchy import dendrogram, linkage
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+def spines_off(ax = plt.gca(), which=["top", "right"]):
+    for w in which:
+        ax.spines[w].set_visible(False)
+    return ax
+
+class Figure:
+    def __init__(self, plot_data):
+        assert hasattr(plot_data, "computed"), "plot_data must have a 'computed' attribute"
+        self.plot_data = plot_data
+
+    def compute_and_plot(self, args):
+        if not self.plot_data.computed:
+            self.plot_data.compute()
+        self.plot(args, self.plot_data)
+        
+    @staticmethod
+    def plot(args, plot_data):
+        raise NotImplementedError("plot() method not implemented")
+
+class ConnectivitySchematic(Figure):
+    @staticmethod
+    def plot(args, plot_data):
+        
+        print("PLOTTING CONNECTIVITY SCHEMATIC")
+        n_rows, n_cols = 24, 16
+        gs = GridSpec(n_rows, n_cols)
+        plt.figure(figsize=(24, 10))
+        
+        ax_mean = plt.subplot(gs[:12,:4])
+        im_file = art_path + "/sister_conn_mean.jpg"
+        ax_mean.imshow(plt.imread(im_file))
+        ax_mean.axis("off")
+            
+        ax_cov  = plt.subplot(gs[:12,4:8])
+        # Paste the svg image in ax_cov
+        im_file = art_path + "/sister_conn_cov.jpg"
+        ax_cov.imshow(plt.imread(im_file))
+        ax_cov.axis("off")
+        
+        ax_angle = plt.subplot(gs[:12,8:12])
+        im_file = art_path + "/angles.jpg"
+        ax_angle.imshow(plt.imread(im_file))
+        ax_angle.axis("off")
+            
+        ax_rot  = plt.subplot(gs[:12,12:16])
+        im_file = art_path + "/rotated.jpg"
+        ax_rot.imshow(plt.imread(im_file))
+        ax_rot.axis("off")
+        
+        nr = [7,14]
+
+        ax = {"conn": []}
+        lab_ax = []
+        row_offset = 12
+        n_rows_per_conn = 3
+        n_cols_per_conn = 12
+        n_cols_per_cov = 2
+        n_cols_per_aff = 2
+        for i, (name, details) in enumerate(zip(["Random", "Sparse", "Weighted"], [plot_data.details1_0, plot_data.details1_1, plot_data.details1_w])):
+            cols_offset = 0
+            rows = list(row_offset + np.arange(n_rows_per_conn))
+            row_slice = slice(rows[0], rows[-1]+1)
+            new_ax = plt.subplot(gs[row_slice, :n_cols_per_conn])
+            ax["conn"].append(new_ax)
+            FigConnectivityDynamics.plot_W1(details, plot_data.Svals, plot_data.N, ax=new_ax, ls = "k:")
+            new_ax.axis("auto")
+            new_ax.set_xlim(0, sum(plot_data.Svals))
+            new_ax.set_ylim(0, plot_data.N-1)
+            new_ax.set_xticks([]); new_ax.set_yticks([])
+            row_offset = rows[-1]+1
+            i == 2 and new_ax.set_xlabel("Mitral cell", fontsize=14)
+            new_ax.set_ylabel(f"GC", fontsize=14)
+            # Left align the title
+            #new_ax.set_title(name, fontsize=18, loc="right", verticalalignment="top")
+            lab_ax.append(new_ax)
+            cols_offset += n_cols_per_conn
+            new_ax = plt.subplot(gs[row_slice, cols_offset:cols_offset + n_cols_per_cov])
+            Wsol = details["Wsol"]
+            new_ax.matshow(np.cov(Wsol.T, bias=True))
+            cols_offset += n_cols_per_cov
+            lab_ax.append(new_ax)
+            new_ax = plt.subplot(gs[row_slice, cols_offset:cols_offset + n_cols_per_aff])
+            new_ax.plot(Wsol.mean(axis=0))
+                
+        
+        #label_axes.label_axes([ax_mean, ax_cov, ax_angle, ax_rot, ax_conn1, ax_conn2, ax_mean2], "ABCDEFG", fontsize=24, fontweight="bold")
+        
+        plt.tight_layout()
+        #plt.show()
+        output_file = os.path.join(args.output_dir, "schematic.pdf")
+        plt.savefig(output_file, bbox_inches="tight")
+        print(f"Figure saved to {output_file}.")
+        print(f"DONE PLOTTING CONNECTIVITY SCHEMATIC.")
+
+class ConnectivityDynamics(Figure):
+
+    @staticmethod
+    def plot_diversity_cumfrac(c, cols = ["tan", "wheat", "chocolate"][::-1], thresh =[0, 0.7, 0.9], ax = None, **kwargs):
+        ax = plt.gca() if ax is None else ax
+        r = c.flatten()
+        x = np.arange(len(r))/len(r)
+        y = np.array(sorted(r))
+        for i, t in enumerate(thresh):
+            ax.plot(x[y > t], y[y > t], color = cols[i], **kwargs)
+
+    @staticmethod
+    def plot_diversity_bars(c, cols = ["tan", "wheat", "chocolate"][::-1], thresh = [0,0.7,0.9], ax = None):
+        ord = np.argsort(np.mean(c,axis=0))
+        ax = plt.gca() if ax is None else ax
+        for i in range(len(ord)):
+            ci = c[:, ord[i]]
+            fracs = [np.mean(ci >= th)*100 for th in thresh]
+            for fi, f in enumerate(fracs):
+                ax.plot([i, i],[0,f], color=cols[fi], lw=5)
+        plt.xlabel("input channel (sorted)")
+        plt.ylabel("stimulus %")
+
+    @staticmethod
+    def plot_W1(d, Svals, N, vlim = 1/4, cmap="bwr", ls = "k", ax = None):
+        ax = gca() if ax is None else ax
+        ax.matshow(d["W1"].T, vmin=-1/4,vmax=1/4, cmap="bwr")
+        yl = plt.ylim()
+        xl = plt.xlim()
+        xx = np.cumsum(Svals)
+        plt.plot([xx, xx], [-1+0*xx, (N)+0*xx], ls, lw=1)
+        plt.xlim(xl); plt.ylim(yl)
+
+    @staticmethod
+    def plot(args, plot_data):
+        print("PLOTTING CONNECTIVITY DYNAMICS FIGURE...")
+        out1_0 = plot_data.out1_0
+        out1_1 = plot_data.out1_1
+        out1_w = plot_data.out1_w
+    
+        ob_arr = plot_data.ob_arr
+        which_odours = plot_data.which_odours
+        corrs = plot_data.corrs
+
+        details1_0 = plot_data.details1_0
+        details1_1 = plot_data.details1_1
+        details1_w = plot_data.details1_w
+                
+        n_rows_per_conn = 1
+        n_rows_per_resp = 2
+        n_rows_per_spacer = 1
+        n_rows   = n_rows_per_resp * (4 * n_rows_per_resp + 3 * n_rows_per_conn) + n_rows_per_spacer# 1 row for real data, 3 for the resps from the different conn models
+        n_odours = len(out1_0)
+        n_cols   = n_odours + 1 + 1 # 1 for the distribution histogram
+        plt.figure(figsize=(12, 20))
+        gs = GridSpec(n_rows, n_cols)
+        lab_ax = []
+        ax = {} 
+        ax["resp"] = {"real":[]}
+        # First row is for the real data
+        new_ax = plt.subplot(gs[0:2,:3])
+        ax["resp"]["real"].append(new_ax)
+        im_file = art_path + "/yuxin_resps.jpg"
+        new_ax.imshow(plt.imread(im_file), extent=[0, 1, 0, 1], transform=new_ax.transAxes, aspect='auto'); new_ax.axis('off')
+        lab_ax.append(new_ax)
+        
+        new_ax = plt.subplot(gs[0:2,3])
+        ax["resp"]["real"].append(new_ax)
+        im_file = art_path + "/yuxin_cumfrac.jpg"
+        new_ax.imshow(plt.imread(im_file), extent=[0, 1, 0, 1], transform=new_ax.transAxes, aspect='auto'); new_ax.axis('off')
+        lab_ax.append(new_ax)
+        
+        new_ax = plt.subplot(gs[0:2,4])
+        ax["resp"]["real"].append(new_ax)
+        im_file = art_path + "/yuxin_bars.jpg"
+        new_ax.imshow(plt.imread(im_file), extent=[0, 1, 0, 1], transform=new_ax.transAxes, aspect='auto'); new_ax.axis('off')
+        lab_ax.append(new_ax)
+        
+        row_offset = 1 * n_rows_per_resp
+        names = ["Random", "Sparse", "Weighted"]
+        
+        for i, (name, out, (glom, sis_inds), od_inds) in enumerate(zip(names, [out1_0, out1_1, out1_w],[(0,[0,1]), (0,[0,1]), (0,[0,1])], which_odours)):
+            # sis_inds are in (glom, sis1, sis2) format
+            # od_inds are in ind1,ind2 format
+            rows = list(row_offset + np.arange(n_rows_per_resp))
+            ax["resp"][f"sim{i}"] = []
+            for j, (od_resp, od_ind) in enumerate(zip(out, od_inds)):
+                new_ax = plt.subplot(gs[slice(rows[0], rows[1]+1), j])
+                ax["resp"][f"sim{i}"].append(new_ax)
+                t = od_resp["T"]
+                la= od_resp["La"]
+                new_ax.plot(t-0.5, la[glom][:, sis_inds[0]] * 1000, label=f"g{glom}s{sis_inds[0]}")
+                new_ax.plot(t-0.5, la[glom][:, sis_inds[1]] * 1000, label=f"g{glom}s{sis_inds[1]}")
+                i==0 and new_ax.legend(fontsize=8, frameon=False, labelspacing=0)
+                i==0 and new_ax.set_title(f"Odour {od_ind}")
+                #i != 2 and new_ax.set_xticklabels([])
+                new_ax.set_xlim(-0.5,1.5)
+                yl = plt.gca().get_ylim()
+                yl_m = np.mean(yl)
+                new_ax.set_ylim(yl_m-2.5,yl_m + 2.5)
+                new_ax.add_patch(patches.Rectangle((0,yl_m-2.5), 1, 5, linewidth=0, facecolor=(0,0,0,0.1)))
+                (i == len(out)-1) and new_ax.set_xlabel("Time (sec)")
+                (j == 0) and new_ax.set_ylabel(name, fontsize=14, labelpad=-5)
+                new_ax.set_xticks([0, 0.5, 1])
+                spines_off(new_ax)
+                if j == 0:
+                    lab_ax.append(new_ax)
+            
+            new_ax = plt.subplot(gs[slice(rows[0], rows[1]+1), j+1])
+            ax["resp"][f"sim{i}"].append(new_ax)
+            FigConnectivityDynamics.plot_diversity_cumfrac(corrs[i], ax=new_ax, lw=3)
+            (i == 2) and new_ax.set_xlabel("temporal similarity index")
+            new_ax.set_ylabel("cumu. frac. glom-odour", fontsize=8, labelpad=-1)
+            new_ax.tick_params(axis='both', labelsize=10)
+            new_ax.set_xticks([0, 0.3, 0.7, 1])
+            new_ax.set_yticks([0, 0.31, 0.69, 1])
+            spines_off(new_ax)
+            lab_ax.append(new_ax)
+        
+            new_ax = plt.subplot(gs[slice(rows[0], rows[1]+1), j+2])
+            ax["resp"][f"sim{i}"].append(new_ax)
+            FigConnectivityDynamics.plot_diversity_bars(corrs[i], ax=new_ax)
+            # The yticks are in fractions of 1, so we need to convert them to percentages
+            new_ax.set_yticks([0, 25, 50, 75, 100])
+            new_ax.set_ylabel("glom %", labelpad=-5)
+            # Set the tick fontsize to 8
+            new_ax.tick_params(axis='both', labelsize=10)
+            (i < 2) and new_ax.set_xlabel("")
+            spines_off(new_ax)
+            lab_ax.append(new_ax)
+            
+        
+            row_offset = rows[-1]+1
+        
+        row_offset += n_rows_per_spacer
+        
+        ax["conn"] = []
+        for i, (name, details) in enumerate(zip(["Random", "Sparse", "Weighted"], [details1_0, details1_1, details1_w])):
+            rows = list(row_offset + np.arange(n_rows_per_conn))
+            new_ax = plt.subplot(gs[slice(rows[0], rows[-1]+1), :-1])
+            ax["conn"].append(new_ax)
+            FigConnectivityDynamics.plot_W1(details, plot_data.Svals, plot_data.N, ax=new_ax, ls = "k:")
+            new_ax.axis("auto")
+            new_ax.set_xlim(0, sum(ob_arr[0].S))
+            new_ax.set_ylim(0, ob_arr[0].N-1)
+            new_ax.set_xticks([]); new_ax.set_yticks([])
+            row_offset = rows[-1]+1
+            i == 2 and new_ax.set_xlabel("Mitral cell")
+            new_ax.set_ylabel(f"GC", fontsize=10)
+            # Left align the title
+            new_ax.set_title(name, fontsize=14, loc="left")
+            lab_ax.append(new_ax)
+        
+        plt.tight_layout(h_pad=-0.25, w_pad = 0.5)    
+        align_x = [[0,3,6,9,12,13,14], [1, 4,7,10], [2, 5,8,11]]
+        align_y = [[0,1,2], [3,4,5], [6,7,8],[9,10,11]]
+        label_axes.label_axes(lab_ax, "ABCDEFGHIJKLMNOP", fontsize=12,fontweight="bold", align_x = align_x, align_y = align_y, dx=-0.001, dy=+0.001)
+
+        output_file = os.path.join(args.output_dir, "conn_dynamics.pdf")
+        plt.savefig(output_file, bbox_inches="tight")
+        print(f"Figure saved to {output_file}.")
+        print("DONE PLOTTING CONNECTIVITY DYNAMICS FIGURE.")
+                                    
+class InferenceDynamics(Figure):
+    @staticmethod
+    def mystem(x, y, *args, **kwargs):
+        return plt.plot([x, x], [0*np.array(y), y], *args, **kwargs)
+
+    @staticmethod
+    def plot(args, plot_data):
+        print("PLOTTING INFERENCE DYNAMICS FIGURE...")
+        N = plot_data.N
+        n = plot_data.n
+        keep = plot_data.keep
+        df   = plot_data.df
+        out1 = plot_data.out1
+        
+        plt.figure(figsize=(8, 3))
+        gs = GridSpec(1, 6)
+        ax_inf = plt.subplot(gs[0,:2])
+        x_true = np.arange(N) < n
+        x0 = keep[0]["x"]
+        x1 = keep[1]["x"]
+        # Make a plot where we show the first 10 elements of the true x, the first 10 elements of x0, and the first 10 elements of x1
+        # We do these as stem plots, and staggered to avoid overlap
+        h0 = FigInferenceDynamics.mystem(np.arange(10), x_true[:10],   "o-", label = "x_true", color = "gray", markersize=2, lw=2)
+        h1 = FigInferenceDynamics.mystem(np.arange(10) + 0.2, x1[:10], "o-", label = "x1", color = "C1", markersize=2, lw=2)
+        h2 = FigInferenceDynamics.mystem(np.arange(10) + 0.4, x0[:10], "o-", label = "x0", color = "C0", markersize=2, lw=2)
+        plt.plot(plt.xlim(),[0,0], "k--", lw=0.5)
+        plt.legend([h0[0], h1[0], h2[0]], ["True", "Corr.", "Indep."], loc = "upper right", fontsize=10, frameon=False, labelspacing=0.2)
+        plt.xlabel("Feature Index", fontsize=14)
+        plt.ylabel("Value", fontsize=14)
+        
+        ax_err = plt.subplot(gs[0,2:4])
+        # Make a plot whose x-axis is σ_inf, and whose y-axis is the mean of the errors over the trials
+        # Make it a line plot, connecting x0err, and a line plot connecting x1err, and use log scale on the y-axis
+        # Add error bars to show the standard deviation of the errors over the trials
+        df.groupby("sd_inf").mean().plot(y = ["x0err", "x1err"], logx = True, logy = True, yerr = df.groupby("sd_inf").std(), marker = "o", ax = ax_err)
+        plt.gca().legend(["Indep.", "Corr."],  fontsize=10, frameon=False, labelspacing=0.2)
+        plt.xlabel("sd$_{inf}$", fontsize=14)
+        plt.ylabel("Error", fontsize=14, labelpad=-10)
+        # Get the y-axis ticks and convert them to decimal notation
+        plt.tight_layout()
+        
+        ax_tc = plt.subplot(gs[0,-2:])
+        plt.plot(out1["T"], out1["X"][:,:10])
+        plt.xlim(out1["T"][0], out1["T"][-1])
+        x_exact = keep[1]["x"][:10]
+        # Put red triangles < at the right most edge of the plot at the target values
+        plt.plot(out1["T"][-1]*np.ones(10), x_exact, "r<", markersize=12)
+        plt.xlabel("Time (s)", fontsize=14)
+        plt.ylabel("Value", fontsize=14)
+        plt.ylim([-0.025,1]); plt.grid(True)
+        label_axes.label_axes([ax_inf, ax_err, ax_tc], "ABC", fontsize=12,fontweight="bold")
+
+        output_file = os.path.join(args.output_dir, "inf_dynamics.pdf")
+        plt.savefig(output_file, bbox_inches="tight")
+        print(f"Figure saved to {output_file}.")
+        print("DONE PLOTTING INFERENCE DYNAMICS FIGURE.")
+
+class InferringThePrior(Figure):
+    @staticmethod
+    def plot(args, plot_data):
+        print("PLOTTING PRIOR INFERENCE FIGURE...")
+        sisters = plot_data.sisters
+        vp = plot_data.vp
+        r  = plot_data.r
+        overlap = plot_data.overlap
+        pairs_ods = plot_data.pairs_ods
+
+        vp_scales = 2+0.5/(np.array(vp) + 1e-1)
+        scales = [("Constant", 1),
+                  ("f(Vapour Pressure)", vp_scales),
+                  ("1/Eigenvector", 1/r),
+        ]
+        C_scales = [sisters.compute_covariance(scales=sc)[0] for name, sc in scales]
+        
+        fig = plt.figure(figsize=(16,6))
+        ax_lab = []
+        for i, ((name, scale),Ci) in enumerate(zip(scales, C_scales)):
+            ax = plt.subplot(1, 3, i+1)
+        
+            if i == 0:
+                Z = linkage(Ci, method="complete", metric="correlation")
+                leaf_order = dendrogram(Z, no_plot=True)["leaves"]
+                sdi = np.std(Ci)
+            Ci = Ci/ np.std(Ci) * sdi
+        
+            if i == 0:
+                vmin, vmax = np.percentile(abs(Ci), [1, 99])
+            im =  plt.matshow(Ci[leaf_order][:, leaf_order], cmap="bwr", vmin = -vmax, vmax = vmax, fignum=False); #colorbar()
+            
+            # Mark the overlaps with a black edged rectangle wih transparent fill
+            for sm1, sm2, ind1, ind2, oils in pairs_ods:
+                if ind1 not in leaf_order or ind2 not in leaf_order:
+                    continue
+                i1 = leaf_order.index(ind1)
+                i2 = leaf_order.index(ind2)
+                ax.add_patch(Rectangle((i1-0.5, i2-0.5), 1, 1, edgecolor="black", facecolor="none", lw=0.5))
+        
+                #ax.add_patch(Rectangle((i1-0.5,i2-0.5), 1, 1, color="black", alpha=0.3))
+                
+            for ii, li in enumerate(leaf_order):
+                if sisters.odour_smiles[li] in overlap:
+                    ax.axvline(ii, color="black", ls=":", lw=0.5)
+                    ax.axhline(ii, color="black", ls=":", lw=0.5)
+                #ax.text(i1+0.5, i2+0.5, ", ".join(oils), ha="center", va="center", fontsize=8)
+        
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("bottom", size="5%", pad=0.4)
+            fig.colorbar(im, cax=cax, orientation="horizontal")    
+            #fig.colorbar(im, ax=ax, orientation="horizontal", pad=0.2)
+        
+            od_labs = [sisters.odour_names[sisters.odours[i]] for i in leaf_order]
+            ax.set_xticks(range(len(Ci)));
+            ax.set_xticklabels(od_labs, rotation=90, fontsize=7)
+            ax.set_yticks(range(len(Ci)))    
+            ax.set_yticklabels(od_labs if i == 0 else [], rotation=0, fontsize=7)
+            ax.set_title(f"Concentrations ~ {name}", fontsize=14)
+            ax_lab.append(ax)
+        
+        label_axes.label_axes(ax_lab, "ABC", fontsize=16,fontweight="bold")
+
+        output_file = os.path.join(args.output_dir, "inferred_priors.pdf")
+        plt.savefig(output_file, bbox_inches="tight")
+        print(f"Figure saved to {output_file}.")
+        print("DONE PLOTTING PRIOR INFERENCE FIGURE.")
+        
+
+        
+            
+            
+            
+    
+        
+    
+
