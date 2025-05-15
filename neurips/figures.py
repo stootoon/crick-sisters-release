@@ -2,6 +2,7 @@ import os, sys, logging
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import cm
+from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.patches as patches
 from matplotlib.patches import Rectangle
 
@@ -388,6 +389,9 @@ class InferringThePrior(Figure):
     @staticmethod
     def plot(args, plot_data):
         print("PLOTTING PRIOR INFERENCE FIGURE...")
+
+        rwg = LinearSegmentedColormap.from_list('rwg', ['red', 'white', 'green'])
+        
         sisters = plot_data.sisters
         vp = plot_data.vp
         r  = plot_data.r
@@ -414,7 +418,7 @@ class InferringThePrior(Figure):
         
             if i == 0:
                 vmin, vmax = np.percentile(abs(Ci), [1, 99])
-            im =  plt.matshow(Ci[leaf_order][:, leaf_order], cmap="bwr", vmin = -vmax, vmax = vmax, fignum=False); #colorbar()
+            im =  plt.matshow(-Ci[leaf_order][:, leaf_order], cmap=rwg, vmin = -vmax, vmax = vmax, fignum=False); #colorbar()
             
             # Mark the overlaps with a black edged rectangle wih transparent fill
             for sm1, sm2, ind1, ind2, oils in pairs_ods:
