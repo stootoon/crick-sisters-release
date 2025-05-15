@@ -173,7 +173,8 @@ class ConnectivitySchematic(Figure):
         print(f"DONE PLOTTING CONNECTIVITY SCHEMATIC.")
 
 class ConnectivityDynamics(Figure):
-
+    panel_label_fontsize = 20
+    axis_label_fontsize = 16
     @staticmethod
     def plot_diversity_cumfrac(c, cols = ["tan", "wheat", "chocolate"][::-1], thresh =[0, 0.7, 0.9], ax = None, **kwargs):
         ax = plt.gca() if ax is None else ax
@@ -234,27 +235,8 @@ class ConnectivityDynamics(Figure):
         gs = GridSpec(n_rows, n_cols)
         lab_ax = []
         ax = {} 
-        ax["resp"] = {"real":[]}
-        # First row is for the real data
-        new_ax = plt.subplot(gs[0:2,:3])
-        ax["resp"]["real"].append(new_ax)
-        im_file = art_path + "/yuxin_resps.jpg"
-        new_ax.imshow(plt.imread(im_file), extent=[0, 1, 0, 1], transform=new_ax.transAxes, aspect='auto'); new_ax.axis('off')
-        lab_ax.append(new_ax)
-        
-        new_ax = plt.subplot(gs[0:2,3])
-        ax["resp"]["real"].append(new_ax)
-        im_file = art_path + "/yuxin_cumfrac.jpg"
-        new_ax.imshow(plt.imread(im_file), extent=[0, 1, 0, 1], transform=new_ax.transAxes, aspect='auto'); new_ax.axis('off')
-        lab_ax.append(new_ax)
-        
-        new_ax = plt.subplot(gs[0:2,4])
-        ax["resp"]["real"].append(new_ax)
-        im_file = art_path + "/yuxin_bars.jpg"
-        new_ax.imshow(plt.imread(im_file), extent=[0, 1, 0, 1], transform=new_ax.transAxes, aspect='auto'); new_ax.axis('off')
-        lab_ax.append(new_ax)
-        
-        row_offset = 1 * n_rows_per_resp
+
+        row_offset = 0 * n_rows_per_resp
         names = ["Random", "Sparse", "Weighted"]
         
         for i, (name, out, (glom, sis_inds), od_inds) in enumerate(zip(names, [out1_0, out1_1, out1_w],[(0,[0,1]), (0,[0,1]), (0,[0,1])], which_odours)):
@@ -306,33 +288,38 @@ class ConnectivityDynamics(Figure):
             (i < 2) and new_ax.set_xlabel("")
             spines_off(new_ax)
             lab_ax.append(new_ax)
-            
-        
+                    
             row_offset = rows[-1]+1
+
+        row_slice = slice(row_offset, row_offset+2)
+        ax["resp"] = {"real":[]}
+        # First row is for the real data
+        new_ax = plt.subplot(gs[row_slice,:3])
+        ax["resp"]["real"].append(new_ax)
+        im_file = art_path + "/yuxin_resps.jpg"
+        new_ax.imshow(plt.imread(im_file), extent=[0, 1, 0, 1], transform=new_ax.transAxes, aspect='auto'); new_ax.axis('off')
+        lab_ax.append(new_ax)
         
-        row_offset += n_rows_per_spacer
+        new_ax = plt.subplot(gs[row_slice,3])
+        ax["resp"]["real"].append(new_ax)
+        im_file = art_path + "/yuxin_cumfrac.jpg"
+        new_ax.imshow(plt.imread(im_file), extent=[0, 1, 0, 1], transform=new_ax.transAxes, aspect='auto'); new_ax.axis('off')
+        lab_ax.append(new_ax)
         
-        ax["conn"] = []
-        for i, (name, details) in enumerate(zip(["Random", "Sparse", "Weighted"], [details1_0, details1_1, details1_w])):
-            rows = list(row_offset + np.arange(n_rows_per_conn))
-            new_ax = plt.subplot(gs[slice(rows[0], rows[-1]+1), :-1])
-            ax["conn"].append(new_ax)
-            Class.plot_W1(details, plot_data.Svals, plot_data.N, ax=new_ax, ls = "k:")
-            new_ax.axis("auto")
-            new_ax.set_xlim(0, sum(ob_arr[0].S))
-            new_ax.set_ylim(0, ob_arr[0].N-1)
-            new_ax.set_xticks([]); new_ax.set_yticks([])
-            row_offset = rows[-1]+1
-            i == 2 and new_ax.set_xlabel("Mitral cell")
-            new_ax.set_ylabel(f"GC", fontsize=10)
-            # Left align the title
-            new_ax.set_title(name, fontsize=14, loc="left")
-            lab_ax.append(new_ax)
+        new_ax = plt.subplot(gs[row_slice,4])
+        ax["resp"]["real"].append(new_ax)
+        im_file = art_path + "/yuxin_bars.jpg"
+        new_ax.imshow(plt.imread(im_file), extent=[0, 1, 0, 1], transform=new_ax.transAxes, aspect='auto'); new_ax.axis('off')
+        lab_ax.append(new_ax)
         
         plt.tight_layout(h_pad=-0.25, w_pad = 0.5)    
-        align_x = [[0,3,6,9,12,13,14], [1, 4,7,10], [2, 5,8,11]]
-        align_y = [[0,1,2], [3,4,5], [6,7,8],[9,10,11]]
-        label_axes.label_axes(lab_ax, "ABCDEFGHIJKLMNOP", fontsize=12,fontweight="bold", align_x = align_x, align_y = align_y, dx=-0.001, dy=+0.001)
+        align_x = [[0,3,6,9], [1, 4,7,10], [2, 5,8,11]]
+        align_y = [[0,1,2], [3,4,5], [6,7,8], [9,10,11]]
+        label_axes.label_axes(lab_ax, "ABCDEFGHIJKLMNOP",
+                              fontsize=Class.panel_label_fontsize,
+                              fontweight="bold",
+                              align_x = align_x,
+                              align_y = align_y, dx=-0.001, dy=+0.001)
 
         output_file = os.path.join(args.output_dir, "conn_dynamics.pdf")
         plt.savefig(output_file, bbox_inches="tight")
