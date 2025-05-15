@@ -362,22 +362,18 @@ class InferenceDynamics(Figure):
         plt.ylabel("Value", fontsize=14)
         
         ax_err = plt.subplot(gs[0,2:4])
-        # Make a plot whose x-axis is σ_inf, and whose y-axis is the mean of the errors over the trials
-        # Make it a line plot, connecting x0err, and a line plot connecting x1err, and use log scale on the y-axis
-        # Add error bars to show the standard deviation of the errors over the trials
-        #df.groupby("sd_inf").mean().plot(y = ["x0err", "x1err"], logx = True, logy = True, yerr = df.groupby("sd_inf").std(), marker = "o", ax = ax_err)
 
         mean_df = df.groupby(["sd_n", "sd_inf"], as_index=False).agg({"x0err":["mean","std"], "x1err":["mean","std"]})
         mean_df.columns = ['_'.join(col).strip() for col in mean_df.columns.values]
         best_err0 = mean_df.loc[mean_df.groupby("sd_n_")["x0err_mean"].idxmin()]
         best_err1 = mean_df.loc[mean_df.groupby("sd_n_")["x1err_mean"].idxmin()]
-        best_err0.plot(x = "sd_n_", y = "x0err_mean", yerr = "x0err_std", ax=ax_err, linewidth = 1, marker = "o", markersize=3, color = "C0",  logx = True, logy=True)
-        best_err1.plot(x = "sd_n_", y = "x1err_mean", yerr = "x1err_std", ax=ax_err, linewidth = 1, marker = "o", markersize=3, color = "C1",  logx = True, logy=True)
+        best_err0.plot(x = "sd_n_", y = "x0err_mean", yerr = "x0err_std", ax=ax_err, linewidth = 1.5, marker = "o", markersize=5, color = "C0",  logx = True, logy=True)
+        best_err1.plot(x = "sd_n_", y = "x1err_mean", yerr = "x1err_std", ax=ax_err, linewidth = 1.5, marker = "o", markersize=5, color = "C1",  logx = True, logy=True)
         spines_off(ax_err)
         plt.gca().legend(["Indep.", "Corr."],  fontsize=10, frameon=False, labelspacing=0.2)
         plt.xlabel("$\sigma_n$", fontsize=14)
         plt.ylabel("Error", fontsize=14, labelpad=-10)
-        # Get the y-axis ticks and convert them to decimal notation
+
         plt.tight_layout()
         
         ax_tc = plt.subplot(gs[0,-2:])
