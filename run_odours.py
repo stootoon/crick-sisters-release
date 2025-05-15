@@ -1,4 +1,4 @@
-import odour as od
+import odours as od
 from numpy import arange
 import pickle
 
