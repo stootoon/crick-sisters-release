@@ -360,6 +360,7 @@ class InferenceDynamics(Figure):
         plt.legend([h0[0], h1[0], h2[0]], ["True", "Corr.", "Indep."], loc = "upper right", fontsize=10, frameon=False, labelspacing=0.2)
         plt.xlabel("Feature Index", fontsize=14)
         plt.ylabel("Value", fontsize=14)
+        spines_off(ax_inf)
         
         ax_err = plt.subplot(gs[0,2:4])
 
