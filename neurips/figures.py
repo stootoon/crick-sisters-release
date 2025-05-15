@@ -364,7 +364,8 @@ class InferenceDynamics(Figure):
 
         ax_tc = plt.subplot(gs[0,2:4])
         n_true = 5 # First five features are actually there
-        colors = [(1.0, 0.65, 0.0, 1.0)] * n_true + [(0,0,0,0.2)] * (out1["X"].shape[1] - n_true)
+        colors = [f"C1"] * (n_true) + [(0.5,0.5,0.5,0.25)] * (out1["X"].shape[1] - n_true)
+        # [(1.0, 0.65, 0.0, 1.0)] * n_true
         lines = plt.plot(out1["T"], out1["X"])
         [l.set_color(c) for l,c in zip(lines, colors)]
         [l.set_lw(1) for l in lines[n_true:]]
@@ -375,7 +376,7 @@ class InferenceDynamics(Figure):
         plt.plot(out1["T"][-1]*np.ones(len(x_exact)), x_exact, "r<", markersize=12)
         plt.xlabel("Time (s)", fontsize=14)
         plt.ylabel("Concentration", fontsize=14)
-        plt.ylim(ax_inf.get_ylim()); plt.grid(True)
+        plt.ylim(ax_inf.get_ylim()); plt.grid(True, linestyle=":", lw=0.5)
         
         ax_err = plt.subplot(gs[0,-2:])
         mean_df = df.groupby(["sd_n", "sd_inf"], as_index=False).agg({"x0err":["mean","std"], "x1err":["mean","std"]})
