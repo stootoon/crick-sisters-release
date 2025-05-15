@@ -51,8 +51,8 @@ class Figure:
             self.plot_data.compute()
         self.plot(args, self.plot_data)
         
-    @staticmethod
-    def plot(args, plot_data):
+    @classmethod
+    def plot(cls, args, plot_data):
         raise NotImplementedError("plot() method not implemented")
 
 class ConnectivitySchematic(Figure):
@@ -359,11 +359,21 @@ class InferenceDynamics(Figure):
         plt.plot(plt.xlim(),[0,0], "k--", lw=0.5)
         plt.legend([h0[0], h1[0], h2[0]], ["True", "Corr.", "Indep."], loc = "upper right", fontsize=10, frameon=False, labelspacing=0.2)
         plt.xlabel("Feature Index", fontsize=14)
-        plt.ylabel("Value", fontsize=14)
+        plt.ylabel("Concentration", fontsize=14)
         spines_off(ax_inf)
-        
-        ax_err = plt.subplot(gs[0,2:4])
 
+        ax_tc = plt.subplot(gs[0,2:4])
+        plt.plot(out1["T"], out1["X"][:,:10])
+        plt.xlim(out1["T"][0], out1["T"][-1])
+        x_exact = keep[1]["x"][:10]
+        spines_off(ax_tc)
+        # Put red triangles < at the right most edge of the plot at the target values
+        plt.plot(out1["T"][-1]*np.ones(10), x_exact, "r<", markersize=12)
+        plt.xlabel("Time (s)", fontsize=14)
+        plt.ylabel("Concentration", fontsize=14)
+        plt.ylim(ax_inf.get_ylim()); plt.grid(True)
+        
+        ax_err = plt.subplot(gs[0,-2:])
         mean_df = df.groupby(["sd_n", "sd_inf"], as_index=False).agg({"x0err":["mean","std"], "x1err":["mean","std"]})
         mean_df.columns = ['_'.join(col).strip() for col in mean_df.columns.values]
         best_err0 = mean_df.loc[mean_df.groupby("sd_n_")["x0err_mean"].idxmin()]
@@ -377,16 +387,7 @@ class InferenceDynamics(Figure):
 
         plt.tight_layout()
         
-        ax_tc = plt.subplot(gs[0,-2:])
-        plt.plot(out1["T"], out1["X"][:,:10])
-        plt.xlim(out1["T"][0], out1["T"][-1])
-        x_exact = keep[1]["x"][:10]
-        # Put red triangles < at the right most edge of the plot at the target values
-        plt.plot(out1["T"][-1]*np.ones(10), x_exact, "r<", markersize=12)
-        plt.xlabel("Time (s)", fontsize=14)
-        plt.ylabel("Value", fontsize=14)
-        plt.ylim([-0.025,1]); plt.grid(True)
-        label_axes.label_axes([ax_inf, ax_err, ax_tc], "ABC", fontsize=12,fontweight="bold")
+        label_axes.label_axes([ax_inf, ax_tc, ax_err], "ABC", fontsize=12,fontweight="bold")
 
         output_file = os.path.join(args.output_dir, "inf_dynamics.pdf")
         plt.savefig(output_file, bbox_inches="tight")
