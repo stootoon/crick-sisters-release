@@ -221,6 +221,7 @@ class InferenceDynamics(Computation):
         od.logger.setLevel(logging.ERROR)
         A_mean = np.random.randn(M, N)
         sd_inf_vals = [1, 2, 5, 10, 20, 50, 100]
+        sd_n_vals = [0.1, 0.2, 0.5, 1, 2, 5, 10]
         n_trials = 5
         results = []
         err_fun = lambda x: np.linalg.norm(x, 2)
@@ -228,18 +229,19 @@ class InferenceDynamics(Computation):
         if not os.path.exists("inf_dyn.p") or force:
             keep = []
             for j, sd_inf in enumerate(sd_inf_vals):
-                for i in range(n_trials):
-                    res0, res1, odour, noise, ob0, ob1 = self.single_run(A_mean, C, S_min_max = [4,9], sd_inf = sd_inf, sd_n = 0.5, be = 0.1, ga = 0.1, seed = i)
-                    x0 = res0["x"]
-                    x1 = res1["x"]
-                    x_true = np.arange(N) < n
-                    err0 = err_fun(x0 - x_true)
-                    err1 = err_fun(x1 - x_true)
-                    results.append({"sd_inf": sd_inf, "trial": i, "x0err": err0, "x1err": err1})
-                    print(f"sd_inf = {sd_inf}, trial = {i}, |x0 - x_true| = {err0:.3f}, |x1 - x_true| = {err1:.3f}")
-                    if sd_inf == 20 and i == 0:
-                        keep = [res0, res1, odour, noise, ob0, ob1]
-    
+                for k, sd_n in enumerate(sd_n_vals):
+                    for i in range(n_trials):
+                        res0, res1, odour, noise, ob0, ob1 = self.single_run(A_mean, C, S_min_max = [4,9], sd_inf = sd_inf, sd_n = sd_n, be = 0.1, ga = 0.1, seed = i)
+                        x0 = res0["x"]
+                        x1 = res1["x"]
+                        x_true = np.arange(N) < n
+                        err0 = err_fun(x0 - x_true)
+                        err1 = err_fun(x1 - x_true)
+                        results.append({"sd_inf": sd_inf, "sd_n": sd_n, "trial": i, "x0err": err0, "x1err": err1})
+                        print(f"sd_inf = {sd_inf}, {sd_n=:}, trial = {i}, |x0 - x_true| = {err0:.3f}, |x1 - x_true| = {err1:.3f}")
+                        if sd_inf == 20 and sd_n == 0.5 and i == 0:
+                            keep = [res0, res1, odour, noise, ob0, ob1]
+        
             df = pd.DataFrame(results)
             res0, res1, odour, noise, ob0, ob1 = keep
             out1 = ob1.run_sister(odour.value_at(0.5) +noise, t_end = 3, dt=2e-4, keep_every=10)
