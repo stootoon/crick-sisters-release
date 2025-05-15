@@ -239,7 +239,7 @@ class ConnectivityDynamics(Figure):
 
         row_offset = 0 * n_rows_per_resp
         names = ["Random", "Sparse", "Weighted"]
-        
+        ax["resp"] = {}
         for i, (name, out, (glom, sis_inds), od_inds) in enumerate(zip(names, [out1_0, out1_1, out1_w],[(0,[0,1]), (0,[0,1]), (0,[0,1])], which_odours)):
             # sis_inds are in (glom, sis1, sis2) format
             # od_inds are in ind1,ind2 format
