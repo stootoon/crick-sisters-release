@@ -59,10 +59,8 @@ class ConnectivitySchematic(Figure):
     label_fontsize = 40
     axis_label_fontsize = 30
     
-    @staticmethod
-    def plot(args, plot_data):
-        Class = ConnectivitySchematic
-        
+    @classmethod
+    def plot(cls, args, plot_data):        
         print("PLOTTING CONNECTIVITY SCHEMATIC")
         n_rows, n_cols = 24, 16
         gs = GridSpec(n_rows, n_cols)
@@ -118,8 +116,8 @@ class ConnectivitySchematic(Figure):
             new_ax.set_ylim(0, plot_data.N-1)
             new_ax.set_xticks([]); new_ax.set_yticks([])
             row_offset = rows[-1]+1
-            i == 2 and new_ax.set_xlabel("Mitral cell", fontsize=Class.axis_label_fontsize)
-            new_ax.set_ylabel(f"Latent", fontsize=Class.axis_label_fontsize)
+            i == 2 and new_ax.set_xlabel("Mitral cell", fontsize=cls.axis_label_fontsize)
+            new_ax.set_ylabel(f"Latent", fontsize=cls.axis_label_fontsize)
             # Left align the title
             #new_ax.set_title(name, fontsize=18, loc="right", verticalalignment="top")
             lab_ax.append(new_ax)
@@ -130,8 +128,8 @@ class ConnectivitySchematic(Figure):
             Wsol = details["Wsol"]
             new_ax.matshow(C[order[:10]][:, order[:10]], cmap=cm.bone_r)
             new_ax.set_xticks([]); new_ax.set_yticks([]);
-            new_ax.set_ylabel("Latent", fontsize=Class.axis_label_fontsize)
-            new_ax.set_xlabel("Latent", fontsize=Class.axis_label_fontsize)
+            new_ax.set_ylabel("Latent", fontsize=cls.axis_label_fontsize)
+            new_ax.set_xlabel("Latent", fontsize=cls.axis_label_fontsize)
             ax["conn"].append(new_ax)
             
             cols_offset += n_cols_per_cov+1
@@ -140,11 +138,11 @@ class ConnectivitySchematic(Figure):
             if i == 0:
                 aff_order = np.argsort(aff[0])
             new_ax.plot(aff.T[aff_order,:2])
-            new_ax.set_xlabel("Latent", fontsize=Class.axis_label_fontsize)
+            new_ax.set_xlabel("Latent", fontsize=cls.axis_label_fontsize)
             # Set the tick sizes
             new_ax.tick_params(axis='both', labelsize=20)
             
-            new_ax.set_ylabel("Affinity", fontsize=Class.axis_label_fontsize)
+            new_ax.set_ylabel("Affinity", fontsize=cls.axis_label_fontsize)
             spines_off(new_ax)
             ax["conn"].append(new_ax)
                 
@@ -164,7 +162,7 @@ class ConnectivitySchematic(Figure):
                               align_x = align_x,
                               dx = -0.02,
                               post_align_dx = post_align_dx,
-                              fontsize=Class.label_fontsize, fontweight="bold")
+                              fontsize=cls.label_fontsize, fontweight="bold")
         
 
         #plt.show()
@@ -210,9 +208,8 @@ class ConnectivityDynamics(Figure):
         plt.plot([xx, xx], [-1+0*xx, (N)+0*xx], ls, lw=lw)
         plt.xlim(xl); plt.ylim(yl)
 
-    @staticmethod
-    def plot(args, plot_data):
-        Class = ConnectivityDynamics
+    @classmethod
+    def plot(cls, args, plot_data):
         print("PLOTTING CONNECTIVITY DYNAMICS FIGURE...")
         out1_0 = plot_data.out1_0
         out1_1 = plot_data.out1_1
@@ -240,6 +237,7 @@ class ConnectivityDynamics(Figure):
         row_offset = 0 * n_rows_per_resp
         names = ["Random", "Sparse", "Weighted"]
         ax["resp"] = {}
+        resp_cols = ["forestgreen", "olive"]
         for i, (name, out, (glom, sis_inds), od_inds) in enumerate(zip(names, [out1_0, out1_1, out1_w],[(0,[0,1]), (0,[0,1]), (0,[0,1])], which_odours)):
             # sis_inds are in (glom, sis1, sis2) format
             # od_inds are in ind1,ind2 format
@@ -250,8 +248,8 @@ class ConnectivityDynamics(Figure):
                 ax["resp"][f"sim{i}"].append(new_ax)
                 t = od_resp["T"]
                 la= od_resp["La"]
-                new_ax.plot(t-0.5, la[glom][:, sis_inds[0]] * 1000, label=f"g{glom}s{sis_inds[0]}")
-                new_ax.plot(t-0.5, la[glom][:, sis_inds[1]] * 1000, label=f"g{glom}s{sis_inds[1]}")
+                new_ax.plot(t-0.5, la[glom][:, sis_inds[0]] * 1000, color = resp_cols[0], lw=2, label=f"ch{glom}s{sis_inds[0]}")
+                new_ax.plot(t-0.5, la[glom][:, sis_inds[1]] * 1000, color = resp_cols[1], lw=2, label=f"ch{glom}s{sis_inds[1]}")
                 i==0 and new_ax.legend(fontsize=8, frameon=False, labelspacing=0)
                 i==0 and new_ax.set_title(f"Odour {od_ind}")
                 #i != 2 and new_ax.set_xticklabels([])
@@ -266,29 +264,31 @@ class ConnectivityDynamics(Figure):
                 spines_off(new_ax)
                 if j == 0:
                     lab_ax.append(new_ax)
-            
+
+
             new_ax = plt.subplot(gs[slice(rows[0], rows[1]+1), j+1])
             ax["resp"][f"sim{i}"].append(new_ax)
-            Class.plot_diversity_cumfrac(corrs[i], ax=new_ax, lw=3)
+            cls.plot_diversity_bars(corrs[i], ax=new_ax)
+            # The yticks are in fractions of 1, so we need to convert them to percentages
+            new_ax.set_yticks([0, 25, 50, 75, 100])
+            new_ax.set_ylabel("% stimuli", labelpad=-5)
+            # Set the tick fontsize to 8
+            new_ax.tick_params(axis='both', labelsize=10)
+            (i < 2) and new_ax.set_xlabel("")
+            spines_off(new_ax)
+            lab_ax.append(new_ax)
+                    
+            new_ax = plt.subplot(gs[slice(rows[0], rows[1]+1), j+2])
+            ax["resp"][f"sim{i}"].append(new_ax)
+            cls.plot_diversity_cumfrac(corrs[i], ax=new_ax, lw=3)
             (i == 2) and new_ax.set_xlabel("temporal similarity index")
-            new_ax.set_ylabel("cumu. frac. glom-odour", fontsize=8, labelpad=-1)
+            new_ax.set_ylabel("cumu. frac. channel-stim.", fontsize=8, labelpad=-1)
             new_ax.tick_params(axis='both', labelsize=10)
             new_ax.set_xticks([0, 0.3, 0.7, 1])
             new_ax.set_yticks([0, 0.31, 0.69, 1])
             spines_off(new_ax)
             lab_ax.append(new_ax)
         
-            new_ax = plt.subplot(gs[slice(rows[0], rows[1]+1), j+2])
-            ax["resp"][f"sim{i}"].append(new_ax)
-            Class.plot_diversity_bars(corrs[i], ax=new_ax)
-            # The yticks are in fractions of 1, so we need to convert them to percentages
-            new_ax.set_yticks([0, 25, 50, 75, 100])
-            new_ax.set_ylabel("glom %", labelpad=-5)
-            # Set the tick fontsize to 8
-            new_ax.tick_params(axis='both', labelsize=10)
-            (i < 2) and new_ax.set_xlabel("")
-            spines_off(new_ax)
-            lab_ax.append(new_ax)
                     
             row_offset = rows[-1]+1
 
@@ -300,24 +300,28 @@ class ConnectivityDynamics(Figure):
         im_file = art_path + "/yuxin_resps.jpg"
         new_ax.imshow(plt.imread(im_file), extent=[0, 1, 0, 1], transform=new_ax.transAxes, aspect='auto'); new_ax.axis('off')
         lab_ax.append(new_ax)
-        
+
         new_ax = plt.subplot(gs[row_slice,3])
-        ax["resp"]["real"].append(new_ax)
-        im_file = art_path + "/yuxin_cumfrac.jpg"
-        new_ax.imshow(plt.imread(im_file), extent=[0, 1, 0, 1], transform=new_ax.transAxes, aspect='auto'); new_ax.axis('off')
-        lab_ax.append(new_ax)
-        
-        new_ax = plt.subplot(gs[row_slice,4])
         ax["resp"]["real"].append(new_ax)
         im_file = art_path + "/yuxin_bars.jpg"
         new_ax.imshow(plt.imread(im_file), extent=[0, 1, 0, 1], transform=new_ax.transAxes, aspect='auto'); new_ax.axis('off')
         lab_ax.append(new_ax)
         
+        new_ax = plt.subplot(gs[row_slice,4])
+        ax["resp"]["real"].append(new_ax)
+        im_file = art_path + "/yuxin_cumfrac.jpg"
+        new_ax.imshow(plt.imread(im_file), extent=[0, 1, 0, 1], transform=new_ax.transAxes, aspect='auto'); new_ax.axis('off')
+        lab_ax.append(new_ax)
+        
+        
         plt.tight_layout(h_pad=-0.25, w_pad = 0.5)    
         align_x = [[0,3,6,9], [1, 4,7,10], [2, 5,8,11]]
         align_y = [[0,1,2], [3,4,5], [6,7,8], [9,10,11]]
-        label_axes.label_axes(lab_ax, "ABCDEFGHIJKLMNOP",
-                              fontsize=Class.panel_label_fontsize,
+        label_axes.label_axes(lab_ax, ["Ai", "Aii", "Aiii",
+                                       "Bi", "Bii", "Biii",
+                                       "Ci", "Cii", "Ciii",
+                                       "Di", "Dii", "Diii"],
+                              fontsize=cls.panel_label_fontsize,
                               fontweight="bold",
                               align_x = align_x,
                               align_y = align_y, dx=-0.001, dy=+0.001)
@@ -332,9 +336,8 @@ class InferenceDynamics(Figure):
     def mystem(x, y, *args, **kwargs):
         return plt.plot([x, x], [0*np.array(y), y], *args, **kwargs)
 
-    @staticmethod
-    def plot(args, plot_data):
-        Class = InferenceDynamics
+    @classmethod
+    def plot(cls, args, plot_data):
         print("PLOTTING INFERENCE DYNAMICS FIGURE...")
         N = plot_data.N
         n = plot_data.n
@@ -350,9 +353,9 @@ class InferenceDynamics(Figure):
         x1 = keep[1]["x"]
         # Make a plot where we show the first 10 elements of the true x, the first 10 elements of x0, and the first 10 elements of x1
         # We do these as stem plots, and staggered to avoid overlap
-        h0 = Class.mystem(np.arange(10), x_true[:10],   "o-", label = "x_true", color = "gray", markersize=2, lw=2)
-        h1 = Class.mystem(np.arange(10) + 0.2, x1[:10], "o-", label = "x1", color = "C1", markersize=2, lw=2)
-        h2 = Class.mystem(np.arange(10) + 0.4, x0[:10], "o-", label = "x0", color = "C0", markersize=2, lw=2)
+        h0 = cls.mystem(np.arange(10), x_true[:10],   "o-", label = "x_true", color = "gray", markersize=2, lw=2)
+        h1 = cls.mystem(np.arange(10) + 0.2, x1[:10], "o-", label = "x1", color = "C1", markersize=2, lw=2)
+        h2 = cls.mystem(np.arange(10) + 0.4, x0[:10], "o-", label = "x0", color = "C0", markersize=2, lw=2)
         plt.plot(plt.xlim(),[0,0], "k--", lw=0.5)
         plt.legend([h0[0], h1[0], h2[0]], ["True", "Corr.", "Indep."], loc = "upper right", fontsize=10, frameon=False, labelspacing=0.2)
         plt.xlabel("Feature Index", fontsize=14)
@@ -386,8 +389,9 @@ class InferenceDynamics(Figure):
         print("DONE PLOTTING INFERENCE DYNAMICS FIGURE.")
 
 class InferringThePrior(Figure):
-    @staticmethod
-    def plot(args, plot_data):
+    panel_label_fontsize = 24
+    @classmethod
+    def plot(cls, args, plot_data):
         print("PLOTTING PRIOR INFERENCE FIGURE...")
 
         rwg = LinearSegmentedColormap.from_list('rwg', ['red', 'white', 'green'])
@@ -449,7 +453,7 @@ class InferringThePrior(Figure):
             ax.set_title(f"Concentrations ~ {name}", fontsize=14)
             ax_lab.append(ax)
         
-        label_axes.label_axes(ax_lab, "ABC", fontsize=16,fontweight="bold")
+        label_axes.label_axes(ax_lab, "ABC", fontsize=cls.panel_label_fontsize,fontweight="bold")
 
         output_file = os.path.join(args.output_dir, "inferred_priors.pdf")
         plt.savefig(output_file, bbox_inches="tight")
