@@ -450,7 +450,7 @@ class InferringThePrior(Figure):
             ax.set_xticklabels(od_labs, rotation=90, fontsize=7)
             ax.set_yticks(range(len(Ci)))    
             ax.set_yticklabels(od_labs if i == 0 else [], rotation=0, fontsize=7)
-            ax.set_title(f"Concentrations ~ {name}", fontsize=14)
+            #ax.set_title(f"Concentrations ~ {name}", fontsize=14)
             ax_lab.append(ax)
         
         label_axes.label_axes(ax_lab, "ABC", fontsize=cls.panel_label_fontsize,fontweight="bold")
