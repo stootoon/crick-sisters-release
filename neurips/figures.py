@@ -251,7 +251,7 @@ class ConnectivityDynamics(Figure):
                 new_ax.plot(t-0.5, la[glom][:, sis_inds[0]] * 1000, color = resp_cols[0], lw=2, label=f"ch{glom}s{sis_inds[0]}")
                 new_ax.plot(t-0.5, la[glom][:, sis_inds[1]] * 1000, color = resp_cols[1], lw=2, label=f"ch{glom}s{sis_inds[1]}")
                 i==0 and new_ax.legend(fontsize=8, frameon=False, labelspacing=0)
-                i==0 and new_ax.set_title(f"Odour {od_ind}")
+                i==0 and new_ax.set_title(f"Stimulus {od_ind}")
                 #i != 2 and new_ax.set_xticklabels([])
                 new_ax.set_xlim(-0.5,1.5)
                 yl = plt.gca().get_ylim()
