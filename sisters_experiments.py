@@ -1,4 +1,3 @@
-# Load the data from Yuxin's experiments
 import os, sys, pickle
 import numpy as np
 import pandas as pd
