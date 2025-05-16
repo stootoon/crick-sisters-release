@@ -55,7 +55,7 @@ class ConnectivitySchematic(Computation):
 class ConnectivityDynamics(Computation):
     @staticmethod
     def gen_sparse_cov(N, n, rho = 0.9, sp = 0.1):
-        Cnn = (np.random.rand(n,n) <= 0.1) * rho
+        Cnn = (np.random.rand(n,n) <= sp) * rho
         # Set the lower triangular indices to zero
         Cnn[np.tril_indices(n)] = 0
         Cnn += Cnn.T
@@ -82,7 +82,7 @@ class ConnectivityDynamics(Computation):
     def compute(self, force = False):
         print("PREPPING CONNECTIVITY DYNAMICS DATA...")
         print("\tGenerating sparse covariance matrix...")
-        C1 = self.gen_sparse_cov(50, 50, rho=0.2, sp = 0.01)
+        C1 = self.gen_sparse_cov(50, 50, rho=0.2, sp = 0.1)
         
         tau_gc = 0.1
         tau_mc = 0.05
@@ -99,9 +99,9 @@ class ConnectivityDynamics(Computation):
         data_file = f"conn.p"        
         if not os.path.exists(data_file) or force:
             print(f"Generating random, sparse and weighted connectivity matrices...")
-            np.random.seed(1); A1_0, details1_0 = ob.OlfactoryBulb.generate_connectivity(M, N, Svals, A_mean, sd_inf**2 * C1 * 1e-1, random_rotation=True, return_details=True, sparsify=0, penalty=0, verbosity = 0)
-            np.random.seed(1); A1_1, details1_1 = ob.OlfactoryBulb.generate_connectivity(M, N, Svals, A_mean, sd_inf**2 * C1 * 1e-1, random_rotation=True, return_details=True, sparsify=5, penalty=10+0*np.arange(M), verbosity = 0)
-            np.random.seed(1); A1_w, details1_w = ob.OlfactoryBulb.generate_connectivity(M, N, Svals, A_mean, sd_inf**2 * C1 * 1e-1, random_rotation=True, return_details=True, sparsify=5, penalty=np.arange(M), verbosity = 0)
+            np.random.seed(1); A1_0, details1_0 = ob.OlfactoryBulb.generate_connectivity(M, N, Svals, A_mean, sd_inf**2 * C1 * ga, random_rotation=True, return_details=True, sparsify=0, penalty=0, verbosity = 0)
+            np.random.seed(1); A1_1, details1_1 = ob.OlfactoryBulb.generate_connectivity(M, N, Svals, A_mean, sd_inf**2 * C1 * ga, random_rotation=True, return_details=True, sparsify=5, penalty=10+0*np.arange(M), verbosity = 0)
+            np.random.seed(1); A1_w, details1_w = ob.OlfactoryBulb.generate_connectivity(M, N, Svals, A_mean, sd_inf**2 * C1 * ga, random_rotation=True, return_details=True, sparsify=5, penalty=np.arange(M), verbosity = 0)
             ob_arr = [ob.OlfactoryBulb(A, sd_inf, be, ga, tau_gc=tau_gc, tau_mc = tau_mc, verbosity=0, enforce_ga=True) for A in [A1_0, A1_1, A1_w]]
             
             data = {"A1_0": A1_0, "A1_1": A1_1, "A1_w": A1_w, "details1_0": details1_0, "details1_1": details1_1, "details1_w": details1_w, 
@@ -202,7 +202,7 @@ class InferenceDynamics(Computation):
         #y   = sum(A_mean[:, :5],axis=1) + randn(M,) * 0
         y  = odour.value_at(0)
         A0 = ob.OlfactoryBulb.generate_connectivity(M, N, Svals, A_mean, 0* C)
-        A1 = ob.OlfactoryBulb.generate_connectivity(M, N, Svals, A_mean, sd_inf**2 * C * 1e-1)
+        A1 = ob.OlfactoryBulb.generate_connectivity(M, N, Svals, A_mean, sd_inf**2 * C * ga)
         tau_gc = 0.1
         tau_mc = 0.05
         ob0 = ob.OlfactoryBulb(A0, sd_inf, be, ga, tau_gc=tau_gc, tau_mc = tau_mc, verbosity=0, enforce_ga=True)
