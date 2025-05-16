@@ -16,7 +16,7 @@ DEBUG = logger.debug
 
 opj = os.path.join
 
-proj_path = os.path.join(os.environ["GIT"], "crick-sisters")
+proj_path = os.path.join(os.environ["GIT"], "crick-sisters-release")
 
 class Experiment:
     def __init__(self,
