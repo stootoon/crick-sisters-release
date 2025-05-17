@@ -3,9 +3,14 @@ import pandas as pd
 import pubchempy as pcp
 import re
 import time
+from pathlib import Path
 
-root_path = os.path.join(os.environ["GIT"], "crick-sisters")
+root_path = Path(__file__).resolve().parent.as_posix()
+sys.path.append(root_path)
+print(f"Root path: {root_path}")
+
 data_path = os.path.join(root_path, "data")
+print(f"Data path: {data_path}")
 
 sys.path.append(root_path)
 sys.path.append(data_path)

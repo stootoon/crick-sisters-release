@@ -2,10 +2,11 @@ import os, sys, pickle, logging
 import numpy as np
 import pandas as pd
 
-git_path = os.environ["GIT"]
-project_path = os.path.join(git_path, "crick-sisters-release")
-sys.path.append(project_path)
+from pathlib import Path
 
+project_path = Path(__file__).resolve().parent.parent.as_posix()
+sys.path.append(project_path)
+print(f"Project path: {project_path}")
 
 import olfactory_bulb as ob
 import odours as od

@@ -15,11 +15,14 @@ DEBUG = logger.debug
 
 opj = os.path.join
 
-proj_path = os.path.join(os.environ["GIT"], "crick-sisters-release")
+from pathlib import Path
+project_path = Path(__file__).resolve().parent.as_posix()
+sys.path.append(project_path)
+print(f"Project path: {project_path}")
 
 class Experiment:
     def __init__(self,
-                 data_dir = opj(proj_path, "data"),
+                 data_dir = opj(project_path, "data"),
                  cell_file = "Y489_Zavg_cell_ss10.npy",
                  glom_file = "Y489_Zavg_glom_ss10.npy",
                  glom_assn_file = "glom_assignments.csv",

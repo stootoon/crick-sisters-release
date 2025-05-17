@@ -1,4 +1,5 @@
 import os, sys, logging
+from pathlib import Path
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import cm
@@ -8,8 +9,9 @@ from matplotlib.patches import Rectangle
 
 import compute
 
-git_path = os.environ["GIT"]
-sys.path.append(git_path)
+if "GIT" in os.environ:
+    git_path = os.environ["GIT"]
+    sys.path.append(git_path)
 
 try:
     from label_axes import label_axes
@@ -21,7 +23,8 @@ except ImportError:
         def label_axes(*args, **kwargs):
             pass
         
-project_path = os.path.join(git_path, "crick-sisters-release")
+project_path = Path(__file__).resolve().parent.parent.as_posix()
+print(f"Project path: {project_path}")
 sys.path.append(project_path)
 
 art_path     = os.path.join(project_path, "art")
