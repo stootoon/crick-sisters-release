@@ -31,16 +31,26 @@ class Experiment:
         
         assert os.path.exists(data_dir), f"Data directory {data_dir} does not exist."
         self.data_dir = data_dir
+
         self.cell_file = opj(data_dir, cell_file)
         assert os.path.exists(self.cell_file), f"Cell file {self.cell_file} does not exist."
+        print(f"Loading cell data from {self.cell_file}")
+        
         self.glom_file = opj(data_dir, glom_file)
         assert os.path.exists(self.glom_file), f"Glom file {self.glom_file} does not exist."
+        print(f"Loading glom data from {self.glom_file}")
+        
         self.glom_assn_file = opj(data_dir, glom_assn_file)
         assert os.path.exists(self.glom_assn_file), f"Glom assignment file {self.glom_assn_file} does not exist."
+        print(f"Loading glom assignment data from {self.glom_assn_file}")
+        
         self.vapour_pressures_file = opj(data_dir, vapour_pressures_file)
         assert os.path.exists(self.vapour_pressures_file), f"Vapour pressures file {self.vapour_pressures_file} does not exist."
+        print(f"Loading vapour pressures data from {self.vapour_pressures_file}")
+        
         self.odours_table_file = opj(data_dir, odours_table)
         assert os.path.exists(self.odours_table_file), f"Odours table file {self.odours_table_file} does not exist."
+        print(f"Loading odours table data from {self.odours_table_file}")
         
 
         cell_data = np.load(self.cell_file, allow_pickle=True).item()
