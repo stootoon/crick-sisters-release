@@ -1,0 +1,7 @@
+*pycache*
+*.p
+
+.DS_Store
+
+*.zip
+
